@@ -29,6 +29,9 @@
 #define LED3 LATBbits.LATB4    //Define LED3
 #define LED4 LATBbits.LATB5    //Define LED4
 
+#define SensorA1 PORTCbits.RC3 //Define the SCL of the sensor array
+#define SensorA2 PORTCbits.RC4 //Define the SDA of the sensor array
+
 #define LOOKUP [[1 0 0 0 0 0] [1 1 1 1 1 1]]
 #define ENCTURNVAL 8 //defines constant for the number of rotations that is required to turn 90 degrees
 #define COLLISION_THRESH 800 //defines constant to begin to avoid collision advoidance
@@ -44,8 +47,21 @@ void EncoderChecker(int encVal);
 void MotorBrake(void);
 unsigned int readLADC(void);    //Read ADC
 unsigned int readRADC(void);    //Read ADC
+void MotorAngle(void);     //Governs the motor turning based on the angle determined from sensor array
+void AddSpeed(int u, int sOra);    //Performs speed adding to motors depending on the situation
 
 void wait10ms(int del);         //delay function
+
+unsigned char readSensorArray(); //Reads and returns the sensor array.
+
+//I2C setup functions prototype
+void I2C_Initialise(void);      	//Initialise I2C
+void I2C_checkbus_free(void);   //Wait until I2C bus is free
+void I2C_Start(void);           	//Generate I2C start condition
+void I2C_RepeatedStart(void);  	 //Generate I2C Repeat start condition
+void I2C_Stop(void);           	 //Generate I2C stop condition
+void I2C_Write(unsigned char write);    //Generate I2C write condition
+unsigned char I2C_Read(void);   	//Generate I2C read condition
 
 void main(void) {
     Setup();
@@ -70,7 +86,12 @@ void Setup(){
     ADCON1=0b00001101;  //Set voltage reference and port A0 as analogue input
     ADCON2=0b10000010; // Fosc/32, A/D result right justified
     LATB=0;             //Turn all Leds off
-    FlashLED();
+
+    TRISCbits.RC3=1; //Set the RC3 pin as input
+    TRISCbits.RC4=4; //Set the RC4 pin as output
+    I2C_Initialise(); //Initialise the I2C
+    
+    FlashLED(); //Flash the LED after set up
     
     //NEED TO ALTER CODE TO SET UP PARTS CORRECTLy FOR I2C
 }
@@ -183,4 +204,150 @@ void wait10ms(int del){     //delay function
     for(c=0;c<del;c++)
         __delay_ms(10);
     return;
+}
+
+unsigned char readSensorArray() {
+    unsigned char linesensor[];
+    I2C_Start();                	//Send Start condition to slave
+    I2C_Write(0x7C);            	//Send 7 bit address + Write to slave
+    I2C_Write(0x11);            	//Write data, select RegdataA and send to slave
+    I2C_RepeatedStart();        	//Send repeat start condition
+    I2C_Write(0x7D);            	//Send 7 bit address + Read
+    linesensor[]=I2C_Read();
+    I2C_Stop();                 	//Send Stop condition
+    return linesensor[];
+}
+
+void MotorAngle() {
+    int angle = 999; //Set a default angle
+    while (angle != 0) {
+        int colourArray[] = ReadSensorArray(); //Import array data
+        switch colourArray[] { //For each condition
+         case {1, 1, 1, 1, 1, 1, 1, 0}:
+            angle = 12;
+            break;
+        case {1, 1, 1, 1, 1, 1, 0, 0}:
+            angle = 10;
+            break;
+        case {1, 1, 1, 1, 1, 1, 0, 1}:
+            angle =9;
+            break;
+        case {1, 1, 1, 1, 1, 0, 0, 1}:
+            angle = 7;
+            break;
+        case {1, 1, 1, 1, 1, 0, 1, 1}:
+            angle = 5;
+            break;
+        case {1, 1, 1, 1, 0, 0, 1, 1}:
+            angle = 3;
+            break;
+        case {1, 1, 1, 1, 0, 1, 1, 1}:
+            angle = 2;
+            break;
+        case {1, 1, 1, 0, 1, 1, 1, 1}:
+            angle = -2;
+            break;
+        case {1, 1, 0, 0, 1, 1, 1, 1}:
+            angle = -3;
+            break;
+        case {1, 1, 0, 1, 1, 1, 1, 1}:
+            angle = -5;
+            break;
+        case {1, 0, 0, 1, 1, 1, 1, 1}:
+            angle = -7;
+            break;
+        case {1, 0, 1, 1, 1, 1, 1, 1}:
+            angle = -9;
+            break;
+        case {0, 0, 1, 1, 1, 1, 1, 1}:
+            angle = -10;
+            break;
+        case {0, 1, 1, 1, 1, 1, 1, 1}:
+            angle = -12;
+            break;
+        default:
+            angle = 0;
+            break; 
+        }
+        int Error = 0 - angle; //Error math
+        int u = 4*Error; //Gain = 4
+        AddSpeed(u,0); //Add speed to the motor and set mode to Angle
+    }
+}
+
+void AddSpeed(int u, int sOra) {
+    if ((CCPR1L+u) > 1023){
+        CCPRL = 1023;
+    } else if ((CCPR1L+u)<0) {
+        CCPR1L = 0;
+    } else {
+        CCPR1L = CCPR1L + u;
+    }
+    if (sOrA == 0){
+        u = -u;
+    } 
+    if (CCPR2L+u)>1023){
+        CCPR2L=1023;
+    }
+    else if ((CCPR2L+u)<0){
+        CCPR2L=0;
+    } else {
+    CCPR2L= CCPR2L+ u;
+    }
+}
+
+
+//------I2C setup functions as given in sample code------
+void I2C_Initialise(void)  	//Initialise I2C
+{
+  SSPCON1 = 0b00101000; 	//set to master mode, enable SDA and SCL pins
+  SSPCON2 = 0;         		 //reset control register 2
+  SSPADD = 0x63;       		 //set baud rate to 100KHz
+  SSPSTAT = 0;         		 //reset status register
+  }
+
+void I2C_checkbus_free(void)   	 //Wait until I2C bus is free, this is WaitI2C in the flowchart
+{
+  while ((SSPSTAT & 0x04) || (SSPCON2 & 0x1F));	//wait until I2C bus is free
+}
+
+
+void I2C_Start(void)        //Generate I2C start condition
+{
+  I2C_checkbus_free(); 	 //Test to see I2C bus is free
+  SEN = 1;              	//Generate start condition,SSPCON2 bit 0 = 1
+}
+
+
+void I2C_RepeatedStart(void) 	//Generate I2C Repeat start condition
+{
+  I2C_checkbus_free();  		//Test to see I2C bus is free
+  RSEN = 1;             		//Generate repeat start, SSPCON2 bit1 = 1
+}
+
+
+void I2C_Stop(void) 		//Generate I2C stop condition
+{
+  I2C_checkbus_free();  		//Test to see I2C bus is free
+  PEN = 1;              		// Generate stop condition,SSPCON2 bit2 = 1
+}
+
+
+void I2C_Write(unsigned char write) 	//Write to slave
+{
+  I2C_checkbus_free();  		//check I2C bus is free
+  SSPBUF = write;       		//Send data to transmit buffer
+}
+
+
+unsigned char I2C_Read(void)    //Read from slave
+{
+  unsigned char temp[];
+  I2C_checkbus_free(); 	 //Test to see I2C bus is free
+  RCEN = 1;            	 //enable receiver,SSPCON2 bit3 = 1
+  I2C_checkbus_free();  	//Test to see I2C bus is free
+  temp = SSPBUF;        	//Read slave
+  I2C_checkbus_free(); 	 //Test to see I2C bus is free
+  ACKEN = 1;           	 //Acknowledge
+  return temp[];         	 //return sensor array data
 }

@@ -32,6 +32,8 @@
 #define LOOKUP [[1 0 0 0 0 0] [1 1 1 1 1 1]]
 #define ENCTURNVAL 8 //defines constant for the number of rotations that is required to turn 90 degrees
 #define COLLISION_THRESH 800 //defines constant to begin to avoid collision advoidance
+#define K 4
+
 void Setup(void);               //Sets up the values n1 0 0 0 0 0] [1 1 1 1 1 1]eeded to operate the robot
 
 void FlashLED(void);            //flashes the LEDs on or off for 5 seconds
@@ -44,7 +46,7 @@ void EncoderChecker(int encVal);
 void MotorBrake(void);
 unsigned int readLADC(void);    //Read ADC
 unsigned int readRADC(void);    //Read ADC
-void MotorSpeed(int )
+void MotorSpeed(void);
 int DetectPLine(void);
 
 void wait10ms(int del);         //delay function
@@ -206,17 +208,21 @@ void wait10ms(int del){     //delay function
     return;
 }
 
-void MotorSpeed(int distance){
+void MotorSpeed(){
+    int distance;
+    int error;
+    int u;
     if (readRADC()>=COLLISION_THRESH){
         MotorBrake();
     } else{
         MotorForwards();
-        distance=distance-readRADC();       //calculates change of distance. if negative, it is too slow and if positive
-
-
+        distance=readRADC();
+        wait10ms(1);
+        distance=distance-readRADC();        //calculates change of distance. if negative, it is too slow and if positive
+        error=0-distance/10;                //calculates speed off mm/ms=m/s
+        u=K*error;
+        AddSpeed(u,1);
     }
-
-
 }
 
 void MotorAngle() {
@@ -224,7 +230,7 @@ void MotorAngle() {
     int error;
     int u;
     do {
-        int colourArray[] = readSensorArray(); //Import array data
+        int colourArray[] = ReadSensorArray(); //Import array data
         switch (colourArray) {
             case 0b11111110:
                 angle = 12;
@@ -316,7 +322,7 @@ void SwitchLane() {
 }
 
 int DetectPLine() {
-    int arrayDetect[] = readSensorArray();
+    int arrayDetect[] = ReadSensorArray();
     if (arrayDetect == 0b00000000){
         return 1;
     } else {
@@ -378,7 +384,7 @@ unsigned char I2C_Read(void)    //Read from slave
   return temp[];              //return sensor array data
 }
 
-unsigned char readSensorArray() {
+unsigned char ReadSensorArray() {
     unsigned char linesensor[];
     I2C_Start();                    //Send Start condition to slave
     I2C_Write(0x7C);                //Send 7 bit address + Write to slave

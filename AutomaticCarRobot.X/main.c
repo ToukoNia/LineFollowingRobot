@@ -93,7 +93,7 @@ void Setup(){
 
     FlashLED(); //Flash the LED after set up
 
-    //Should be ok?
+    //Set up complete
 }
 
 unsigned int readRADC() {
@@ -122,9 +122,9 @@ void FlashLED(){       //flashes the LEDs on and off for 5 seconds
 
 void allLED(int val){ //sets every LED to either on or off based on if one or zero entered.
     LED1=val; //sets LED1 to the value specified
-    LED2=val; //sets LED2 to the value specified etc...
-    LED3=val;
-    LED4=val;
+    LED2=val; //sets LED2 to the value specified
+    LED3=val; //sets LED3 to the value specified
+    LED4=val; //sets LED4 to the value specified
     return;
 }
 
@@ -288,17 +288,17 @@ void MotorAngle() {
 
 void MotorPath() {
     AutomaticLineFollow(2); //Go through outer lane twice
-    MotorBrake();
-    SwitchLane();
+    MotorBrake(); //Brake
+    SwitchLane(); //Switch to inner lane
     AutomaticLineFollow(2); //Go through inner lane once
-    MotorBrake();
+    MotorBrake(); //Brake
     wait10ms(500); //Waits 5 seconds
-    TurnRight180();
+    TurnRight180(); //Turn around
     AutomaticLineFollow(1); //Go through inner lane in other direction
-    SwitchLane();
+    SwitchLane(); //Switch to outer lane
     AutomaticLineFollow(1); //Go through outer lane in other direction
-    MotorBrake();
-    wait10ms(500);
+    MotorBrake(); //Brake
+    wait10ms(500); //Waits 5 seconds
 }
 
 void AutomaticLineFollow(int a) {
@@ -306,20 +306,20 @@ void AutomaticLineFollow(int a) {
 
     // Loop until 'numberPassed' is less than 'a'
     while (numberPassed < a) {
-        MotorSpeed();
-        MotorAngle();
+        MotorSpeed(); //Modify speed for robot in front if needed
+        MotorAngle(); //Makes sure the robot follows the line
         numberPassed += DetectPLine();
     }
 }
 
-void AddSpeed(int u, int speedOrAngle) {    //
-    CCPR1L = (CCPR1L + u) > 1023 ? 1023 : ((CCPR1L + u) < 0 ? 0 : CCPR1L + u);  //compares CCPR1L+u with 0, if its greater=CCPR1L+u, otherwise equals 0. It then does the same check with 1023
+void AddSpeed(int u, int speedOrAngle) {    //Adds speed to motors to respond to MotorSpeed or MotorAngle
+    CCPR1L = (CCPR1L + u) > 1023 ? 1023 : ((CCPR1L + u) < 0 ? 0 : CCPR1L + u);  //compares CCPR1L+u with 0, if its greater, change CCPR1L to CCPR1L+u, otherwise equals 0. It then does the same check with 1023
 
     if (!speedOrAngle){ //if 0 is passed in (sets it to the angle)
-        u = -u;
+        u = -u; //If angle, then added speed to one motor is converted to slow down for other motor
     }
 
-    CCPR2L = (CCPR2L + u) > 1023 ? 1023 : ((CCPR2L + u) < 0 ? 0 : CCPR2L + u);  //same as above
+    CCPR2L = (CCPR2L + u) > 1023 ? 1023 : ((CCPR2L + u) < 0 ? 0 : CCPR2L + u);  //compares CCPR2L+u with 0, if its greater, change CCPR2L to CCPR2L+u, otherwise equals 0. It then does the same check with 1023
 }
 
 void SwitchLane() {
@@ -339,11 +339,11 @@ void SwitchLane() {
 }
 
 int DetectPLine() {
-    char arrayDetect = ReadSensorArray();
-    if (arrayDetect == 0b00000000){
-        return 1;
-    } else {
-        return 0;
+    char arrayDetect = ReadSensorArray(); //Read the sensor array
+    if (arrayDetect == 0b00000000){ //If the sensor detects all white (a line)
+        return 1; //line detected
+    } else { //If the sensor does not detect all white
+        return 0; //line not detected
     }
 }
 
@@ -396,7 +396,7 @@ unsigned char ReadSensorArray() {
     I2C_Write(0x11);                //Write data, select RegdataA and send to slave
     I2C_RepeatedStart();            //Send repeat start condition
     I2C_Write(0x7D);                //Send 7 bit address + Read
-    linesensor=I2C_Read();
+    linesensor=I2C_Read();          //Send data to linesensor
     I2C_Stop();                     //Send Stop condition
     return linesensor;
 }

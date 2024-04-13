@@ -204,7 +204,18 @@ void wait10ms(int del){     //delay function
     return;
 }
 
+void MotorSpeed(int distance){
+    if (readRADC()>=COLLISION_THRESH){
+        MotorBrake();
+    } else{
+        MotorForwards();
+        distance=distance-readRADC();       //calculates change of distance. if negative, it is too slow and if positive
 
+
+    }
+
+
+}
 
 void MotorAngle() {
     int angle; //Set a default angle
@@ -286,6 +297,25 @@ void AddSpeed(int u, int sOrA) {    //
     }
 }
 
+void SwitchLane() {
+    while (1) {
+        TurnRight45(); // Turn right 45 degrees
+        MotorForwards(); // Move forward
+
+        // Wait for 0.5 seconds
+        wait10ms(50);
+
+        // Read sensor array
+        unsigned char sensorData[] = readSensorArray();
+
+        // Check if sensor data indicates the desired lane (example: all sensors are activated)
+        if (sensorData != 0b1111111) {
+            MotorBrake(); // Brake if lane is not detected
+            break; // Exit the loop
+        }
+    }
+}
+
 void I2C_Initialise(void)      //Initialise I2C
 {
   SSPCON1 = 0b00101000;     //set to master mode, enable SDA and SCL pins
@@ -351,3 +381,4 @@ unsigned char readSensorArray() {
     I2C_Stop();                     //Send Stop condition
     return linesensor[];
 }
+

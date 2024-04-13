@@ -29,7 +29,6 @@
 #define LED3 LATBbits.LATB4    //Define LED3
 #define LED4 LATBbits.LATB5    //Define LED4
 
-#define LOOKUP [[1 0 0 0 0 0] [1 1 1 1 1 1]]
 #define ENCTURNVAL 8 //defines constant for the number of rotations that is required to turn 90 degrees
 #define COLLISION_THRESH 800 //defines constant to begin to avoid collision advoidance
 #define K 4
@@ -315,24 +314,12 @@ void AutomaticLineFollow(int a) {
 }
 
 void AddSpeed(int u, int sOrA) {    //
-    if ((CCPR1L+u) > 1023){
-        CCPR1L = 1023;
-    } else if ((CCPR1L+u)<0) {
-        CCPR1L = 0;
-    } else {
-        CCPR1L = CCPR1L + u;
-    }
+    CCPR1L = (CCPR1L + u) > 1023 ? 1023 : ((CCPR1L + u) < 0 ? 0 : CCPR1L + u);  //compares CCPR1L+u with 0, if its greater=CCPR1L+u, otherwise equals 0. It then does the same check with 1023
+
     if (sOrA == 0){
         u = -u;
     }
-    if ((CCPR2L+u)>1023){
-        CCPR2L=1023;
-    }
-    else if ((CCPR2L+u)<0){
-        CCPR2L=0;
-    } else {
-    CCPR2L= CCPR2L+ u;
-    }
+    CCPR2L = (CCPR2L + u) > 1023 ? 1023 : ((CCPR2L + u) < 0 ? 0 : CCPR2L + u);  //same as above
 }
 
 void SwitchLane() {

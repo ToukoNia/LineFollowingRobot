@@ -93,7 +93,7 @@ void Setup(){
 
     FlashLED(); //Flash the LED after set up
 
-    //Should be ok?
+    //Set up complete
 }
 
 unsigned int readRADC() {
@@ -122,9 +122,11 @@ void FlashLED(){       //flashes the LEDs on and off for 5 seconds
 
 void allLED(int val){ //sets every LED to either on or off based on if one or zero entered.
     LED1=val; //sets LED1 to the value specified
-    LED2=val; //sets LED2 to the value specified etc...
-    LED3=val;
-    LED4=val;
+    LED2=val; //sets LED2 to the value specified
+
+    LED3=val; //sets LED3 to the value specified
+    LED4=val; //sets LED4 to the value specified
+
     return;
 }
 
@@ -132,12 +134,12 @@ void MotorForwards(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
 
-    A1=0;
+    A1=0; //sets right motor to reverse
     A2=1; //sets right motor to forwards
 
-    B1=0;
-    B2=1;
-          //sets left  motor to forwards
+    B1=0; //sets left motor to reverse
+    B2=1; //sets left  motor to forwards
+
     return;
 }
 
@@ -145,41 +147,41 @@ void TurnRight(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
 
-    A1=1;
+    A1=1; //sets right motor to forwards
     A2=0; //sets right motor to reverse
-    B1=0;
-    B2=1;
-          //sets left  motor to forwards
+    B1=0; //sets left motor to reverse
+    B2=1; //sets left  motor to forwards
+
     return;
 }
 
 void TurnRight45(){
-    TurnRight();
-    EncoderChecker(ENCTURNVAL);
+    TurnRight(); //TurnRight() function
+    EncoderChecker(ENCTURNVAL); //The encoder turn value is sent to the EncoderChecker
     return;
 }
 
 void TurnRight180(){
     TurnRight();
-    EncoderChecker(4*ENCTURNVAL);
+    EncoderChecker(4*ENCTURNVAL); //The encoder turn value is multiplied by gain 4 and is sent to the EncoderChecker
     return;
 }
 
 void EncoderChecker(int encVal){
-    unsigned int encCountL=0;
-    unsigned int encCountR=0;
-    while(encCountL<encVal || encCountR<encVal){ //loops until both constants are met
+    unsigned int encCountL=0; //Initialize the left encoder count
+    unsigned int encCountR=0; //Initialize the right encoder count
+    while(encCountL<encVal || encCountR<encVal){  //loops until both constants are met
         encCountR=encCountR+REnc;           //sums encoder values. The value is 1 when a turn is complete, and 0 otherwise. Hence, will only increment it if true
         encCountL=encCountL+LEnc;
-        if (encCountL >= encVal){       //Checks left value against the turn constant and brakes left motor if met
-            B1=1;
+        if (encCountL >= encVal){       //Checks if left encoder count has reaches "encVal"
+            B1=1; //If the left encoder count meets or exceeds "encVal", brake the left motor
             B2=1;
         }
-        if (encCountR >= encVal){      //Checks right value against the turn constant and brakes right motor if met
-            A1=1;
+        if (encCountR >= encVal){      //Checks if the right encoder count has reaches "encVal"
+            A1=1;  // If right encoder count meets or exceeds encVal, brake the right motor
             A2=1;
         }
-        wait10ms(1);
+        wait10ms(1); //wait for a short duration before checking again
     };
 
 }
@@ -206,34 +208,34 @@ void MotorCoast(){
 void wait10ms(int del){     //delay function
     unsigned int c;
     for(c=0;c<del;c++)
-        __delay_ms(10);
+        __delay_ms(10);     //delay for 1s
     return;
 }
 
 void MotorSpeed(){
-    int distance;
-    int error;
-    int u;
-    if (readRADC()>=COLLISION_THRESH){
-        MotorBrake();
+    int distance; //variable to store distance
+    int error;    //variable to store error
+    int u;        //variable to store control input
+    if (readRADC()>=COLLISION_THRESH){  //check if there are obstacles detected
+        MotorBrake();  // Brake if obstacle detected
     } else{
-        MotorForwards();
-        distance=readRADC();
-        wait10ms(1);
+        MotorForwards();  //Move forwards if no obstacle detected
+        distance=readRADC();  //distance is read from sensor
+        wait10ms(1);          //wait for a short time
         distance=distance-readRADC();        //calculates change of distance. if negative, it is too slow and if positive
         error=0-distance/10;                //calculates speed off mm/ms=m/s
-        u=K*error;
-        AddSpeed(u,1);
+        u=K*error;  //K is a constant representing the control gain
+        AddSpeed(u,1); //The '1' indicates forward motion
     }
 }
 
 void MotorAngle() {
-    int angle; //Initalise variables
-    int error;
-    int u;
+    int angle; //variable to store angle
+    int error; //variable to store error
+    int u;     //variable to store control input
     do {
         unsigned char colourArray = ReadSensorArray(); //Import array data
-        switch (colourArray) {
+        switch (colourArray) {   // Angle is determined based on the sensor array data
             case 0b11111110:
                 angle = 12;
                 break;
@@ -277,28 +279,28 @@ void MotorAngle() {
                 angle = -12;
                 break;
             default:
-                angle = 0;
+                angle = 0;  //default angle if there is no matching case
                 break;
         }
         error = 0 - angle; //Error math
         u = 4*error; //Gain = 4
         AddSpeed(u,0); //Add speed to the motor and set mode to Angle
-    }while (angle != 0);
+    }while (angle != 0); // continue looping until the angle reaches 0
 }
 
 void MotorPath() {
     AutomaticLineFollow(2); //Go through outer lane twice
-    MotorBrake();
-    SwitchLane();
+    MotorBrake(); //Brake
+    SwitchLane(); //Switch to inner lane
     AutomaticLineFollow(2); //Go through inner lane once
-    MotorBrake();
+    MotorBrake(); //Brake
     wait10ms(500); //Waits 5 seconds
-    TurnRight180();
+    TurnRight180(); //Turn around
     AutomaticLineFollow(1); //Go through inner lane in other direction
-    SwitchLane();
+    SwitchLane(); //Switch to outer lane
     AutomaticLineFollow(1); //Go through outer lane in other direction
-    MotorBrake();
-    wait10ms(500);
+    MotorBrake(); //Brake
+    wait10ms(500); //Waits 5 seconds
 }
 
 void AutomaticLineFollow(int a) {
@@ -306,20 +308,20 @@ void AutomaticLineFollow(int a) {
 
     // Loop until 'numberPassed' is less than 'a'
     while (numberPassed < a) {
-        MotorSpeed();
-        MotorAngle();
+        MotorSpeed(); //Modify speed for robot in front if needed
+        MotorAngle(); //Makes sure the robot follows the line
         numberPassed += DetectPLine();
     }
 }
 
-void AddSpeed(int u, int speedOrAngle) {    //
-    CCPR1L = (CCPR1L + u) > 1023 ? 1023 : ((CCPR1L + u) < 0 ? 0 : CCPR1L + u);  //compares CCPR1L+u with 0, if its greater=CCPR1L+u, otherwise equals 0. It then does the same check with 1023
+void AddSpeed(int u, int speedOrAngle) {    //Adds speed to motors to respond to MotorSpeed or MotorAngle
+    CCPR1L = (CCPR1L + u) > 1023 ? 1023 : ((CCPR1L + u) < 0 ? 0 : CCPR1L + u);  //compares CCPR1L+u with 0, if its greater, change CCPR1L to CCPR1L+u, otherwise equals 0. It then does the same check with 1023
 
     if (!speedOrAngle){ //if 0 is passed in (sets it to the angle)
-        u = -u;
+        u = -u; //If angle, then added speed to one motor is converted to slow down for other motor
     }
 
-    CCPR2L = (CCPR2L + u) > 1023 ? 1023 : ((CCPR2L + u) < 0 ? 0 : CCPR2L + u);  //same as above
+    CCPR2L = (CCPR2L + u) > 1023 ? 1023 : ((CCPR2L + u) < 0 ? 0 : CCPR2L + u);  //compares CCPR2L+u with 0, if its greater, change CCPR2L to CCPR2L+u, otherwise equals 0. It then does the same check with 1023
 }
 
 void SwitchLane() {
@@ -339,11 +341,11 @@ void SwitchLane() {
 }
 
 int DetectPLine() {
-    char arrayDetect = ReadSensorArray();
-    if (arrayDetect == 0b00000000){
-        return 1;
-    } else {
-        return 0;
+    char arrayDetect = ReadSensorArray(); //Read the sensor array
+    if (arrayDetect == 0b00000000){ //If the sensor detects all white (a line)
+        return 1; //line detected
+    } else { //If the sensor does not detect all white
+        return 0; //line not detected
     }
 }
 
@@ -396,7 +398,7 @@ unsigned char ReadSensorArray() {
     I2C_Write(0x11);                //Write data, select RegdataA and send to slave
     I2C_RepeatedStart();            //Send repeat start condition
     I2C_Write(0x7D);                //Send 7 bit address + Read
-    linesensor=I2C_Read();
+    linesensor=I2C_Read();          //Send data to linesensor
     I2C_Stop();                     //Send Stop condition
     return linesensor;
 }

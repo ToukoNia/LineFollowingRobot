@@ -33,24 +33,24 @@
 #define COLLISION_THRESH 800 //defines constant to begin to avoid collision advoidance
 #define K 4
 
-void Setup();
-unsigned int readRADC();
-unsigned int readLADC();
-void FlashLED();
+void Setup(void);
+unsigned int readRADC(void);
+unsigned int readLADC(void);
+void FlashLED(void);
 void allLED(int val);
-void MotorForwards();
-void TurnRight();
-void TurnRight45();
-void TurnRight180();
+void MotorForwards(void);
+void TurnRight(void);
+void TurnRight45(void);
+void TurnRight180(void);
 void EncoderChecker(int encVal);
-void MotorBrake();
-void MotorCoast();
+void MotorBrake(void);
+void MotorCoast(void);
 void wait10ms(int del);
-void MotorSpeed();
-void MotorAngle();
+void MotorSpeed(void);
+void MotorAngle(void);
 void AddSpeed(int u, int sOrA);
-void SwitchLane();
-int DetectPLine();
+void SwitchLane(void);
+int DetectPLine(void);
 void I2C_Initialise(void);
 void I2C_checkbus_free(void);
 void I2C_Start(void);

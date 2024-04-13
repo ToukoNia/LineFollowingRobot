@@ -97,9 +97,7 @@ void Setup(){
 }
 
 unsigned int readRADC() {
-
     ADCON0 = 0b00000111; //select A/D channel AN0,start conversion
-
     while (ADCON0bits.GO){}; //do nothing while conversion in progress
     return ((ADRESH << 8) + ADRESL); //Combines high and low A/D bytes into one
 }                                 // value and returns this A/D value 0-1023
@@ -123,11 +121,8 @@ void FlashLED(){       //flashes the LEDs on and off for 5 seconds
 void allLED(int val){ //sets every LED to either on or off based on if one or zero entered.
     LED1=val; //sets LED1 to the value specified
     LED2=val; //sets LED2 to the value specified
-
     LED3=val; //sets LED3 to the value specified
     LED4=val; //sets LED4 to the value specified
-
-    return;
 }
 
 void MotorForwards(){
@@ -140,7 +135,6 @@ void MotorForwards(){
     B1=0; //sets left motor to reverse
     B2=1; //sets left  motor to forwards
 
-    return;
 }
 
 void TurnRight(){
@@ -233,59 +227,58 @@ void MotorAngle() {
     int angle; //variable to store angle
     int error; //variable to store error
     int u;     //variable to store control input
-    do {
-        unsigned char colourArray = ReadSensorArray(); //Import array data
-        switch (colourArray) {   // Angle is determined based on the sensor array data
-            case 0b11111110:
-                angle = 12;
-                break;
-            case 0b11111100:
-                angle = 10;
-                break;
-            case 0b11111101:
-                angle = 9;
-                break;
-            case 0b11111001:
-                angle = 7;
-                break;
-            case 0b11111011:
-                angle = 5;
-                break;
-            case 0b11110011:
-                angle = 3;
-                break;
-            case 0b11110111:
-                angle = 2;
-                break;
-            case 0b11101111:
-                angle = -2;
-                break;
-            case 0b11001111:
-                angle = -3;
-                break;
-            case 0b11011111:
-                angle = -5;
-                break;
-            case 0b10011111:
-                angle = -7;
-                break;
-            case 0b10111111:
-                angle = -9;
-                break;
-            case 0b01111111:
-                angle = -10;
-                break;
-            case 0b11111111:
-                angle = -12;
-                break;
-            default:
-                angle = 0;  //default angle if there is no matching case
-                break;
-        }
-        error = 0 - angle; //Error math
-        u = 4*error; //Gain = 4
-        AddSpeed(u,0); //Add speed to the motor and set mode to Angle
-    }while (angle != 0); // continue looping until the angle reaches 0
+    unsigned char colourArray = ReadSensorArray(); //Import array data
+    switch (colourArray) {   // Angle is determined based on the sensor array data
+        case 0b11111110:
+            angle = 12;
+            break;
+        case 0b11111100:
+            angle = 10;
+            break;
+        case 0b11111101:
+            angle = 9;
+            break;
+        case 0b11111001:
+            angle = 7;
+            break;
+        case 0b11111011:
+            angle = 5;
+            break;
+        case 0b11110011:
+            angle = 3;
+            break;
+        case 0b11110111:
+            angle = 2;
+            break;
+        case 0b11101111:
+            angle = -2;
+            break;
+        case 0b11001111:
+            angle = -3;
+            break;
+        case 0b11011111:
+            angle = -5;
+            break;
+        case 0b10011111:
+            angle = -7;
+            break;
+        case 0b10111111:
+            angle = -9;
+            break;
+        case 0b00111111:
+            angle = -10;
+            break;
+        case 0b01111111:
+            angle = -12;
+            break;
+        default:
+            angle = 0;  //default angle if there is no matching case
+            break;
+    }
+    error = 0 - angle; //Error math
+    u = 4*error; //Gain = 4
+    AddSpeed(u,0); //Add speed to the motor and set mode to Angle
+
 }
 
 void MotorPath() {
@@ -310,7 +303,7 @@ void AutomaticLineFollow(int a) {
     while (numberPassed < a) {
         MotorSpeed(); //Modify speed for robot in front if needed
         MotorAngle(); //Makes sure the robot follows the line
-        numberPassed += DetectPLine();
+        numberPassed += DetectPLine();  //if detecting the passing line, increment amount of loops by one.
     }
 }
 
@@ -328,10 +321,9 @@ void SwitchLane() {
     while (1) {
         TurnRight45(); // Turn right 45 degrees
         MotorForwards(); // Move forward
-        // Wait for 0.5 seconds
-        wait10ms(50);
-        // Read sensor array
-        unsigned char sensorData = ReadSensorArray();
+        wait10ms(50);   // Wait for 0.5 seconds
+        unsigned char sensorData = ReadSensorArray();   // Read sensor array
+
         // Check if sensor data indicates the desired lane (example: all sensors are activated)
         if (sensorData != 0b1111111) {
             MotorBrake(); // Brake if lane is not detected

@@ -34,31 +34,35 @@
 #define COLLISION_THRESH 800 //defines constant to begin to avoid collision advoidance
 #define K 4
 
-void Setup(void);               //Sets up the values n1 0 0 0 0 0] [1 1 1 1 1 1]eeded to operate the robot
-
-void FlashLED(void);            //flashes the LEDs on or off for 5 seconds
-void allLED(int val);           //sets every LED to either on or off based on if one or zero entered.
-
-void MotorForwards(void);       //motor functions, does what they say on the tin
-void TurnRight(void);
-void TurnLeft90(void);
+void Setup();
+unsigned int readRADC();
+unsigned int readLADC();
+void FlashLED();
+void allLED(int val);
+void MotorForwards();
+void TurnRight();
+void TurnRight45();
+void TurnRight180();
 void EncoderChecker(int encVal);
-void MotorBrake(void);
-unsigned int readLADC(void);    //Read ADC
-unsigned int readRADC(void);    //Read ADC
-void MotorSpeed(void);
-int DetectPLine(void);
+void MotorBrake();
+void MotorCoast();
+void wait10ms(int del);
+void MotorSpeed();
+void MotorAngle();
+void AddSpeed(int u, int sOrA);
+void SwitchLane();
+int DetectPLine();
+void I2C_Initialise(void);
+void I2C_checkbus_free(void);
+void I2C_Start(void);
+void I2C_RepeatedStart(void);
+void I2C_Stop(void);
+void I2C_Write(unsigned char write);
+unsigned char I2C_Read(void);
+unsigned char ReadSensorArray();
+void AutomaticLineFollow(int a);
+void MotorPath(void);
 
-void wait10ms(int del);         //delay function
-
-//I2C setup functions prototype
-void I2C_Initialise(void);          //Initialise I2C
-void I2C_checkbus_free(void);   //Wait until I2C bus is free
-void I2C_Start(void);               //Generate I2C start condition
-void I2C_RepeatedStart(void);       //Generate I2C Repeat start condition
-void I2C_Stop(void);                //Generate I2C stop condition
-void I2C_Write(unsigned char write);    //Generate I2C write condition
-unsigned char I2C_Read(void);       //Generate I2C read condition
 
 void main(void) {
     Setup();
@@ -230,7 +234,7 @@ void MotorAngle() {
     int error;
     int u;
     do {
-        int colourArray[] = ReadSensorArray(); //Import array data
+        char colourArray = ReadSensorArray(); //Import array data
         switch (colourArray) {
             case 0b11111110:
                 angle = 12;
@@ -284,6 +288,32 @@ void MotorAngle() {
     }while (angle != 0);
 }
 
+void MotorPath() {
+    AutomaticLineFollow(2); //Go through outer lane twice
+    MotorBrake();
+    SwitchLane();
+    AutomaticLineFollow(2); //Go through inner lane once
+    MotorBrake();
+    wait10ms(500); //Waits 5 seconds
+    TurnRight180();
+    AutomaticLineFollow(1); //Go through inner lane in other direction
+    SwitchLane();
+    AutomaticLineFollow(1); //Go through outer lane in other direction
+    MotorBrake();
+    wait10ms(500);
+}
+
+void AutomaticLineFollow(int a) {
+    int numberPassed = 0; // Declare and initialize the variable
+
+    // Loop until 'numberPassed' is less than 'a'
+    while (numberPassed < a) {
+        MotorSpeed();
+        MotorAngle();
+        numberPassed += DetectPLine();
+    }
+}
+
 void AddSpeed(int u, int sOrA) {    //
     if ((CCPR1L+u) > 1023){
         CCPR1L = 1023;
@@ -312,7 +342,7 @@ void SwitchLane() {
         // Wait for 0.5 seconds
         wait10ms(50);
         // Read sensor array
-        unsigned char sensorData[] = readSensorArray();
+        unsigned char sensorData = ReadSensorArray();
         // Check if sensor data indicates the desired lane (example: all sensors are activated)
         if (sensorData != 0b1111111) {
             MotorBrake(); // Brake if lane is not detected
@@ -322,7 +352,7 @@ void SwitchLane() {
 }
 
 int DetectPLine() {
-    int arrayDetect[] = ReadSensorArray();
+    char arrayDetect = ReadSensorArray();
     if (arrayDetect == 0b00000000){
         return 1;
     } else {
@@ -374,25 +404,25 @@ void I2C_Write(unsigned char write)     //Write to slave
 
 unsigned char I2C_Read(void)    //Read from slave
 {
-  unsigned char temp[];
+  unsigned char temp;
   I2C_checkbus_free();      //Test to see I2C bus is free
   RCEN = 1;                 //enable receiver,SSPCON2 bit3 = 1
   I2C_checkbus_free();      //Test to see I2C bus is free
   temp = SSPBUF;            //Read slave
   I2C_checkbus_free();      //Test to see I2C bus is free
   ACKEN = 1;                //Acknowledge
-  return temp[];              //return sensor array data
+  return temp;              //return sensor array data
 }
 
 unsigned char ReadSensorArray() {
-    unsigned char linesensor[];
+    unsigned char linesensor;
     I2C_Start();                    //Send Start condition to slave
     I2C_Write(0x7C);                //Send 7 bit address + Write to slave
     I2C_Write(0x11);                //Write data, select RegdataA and send to slave
     I2C_RepeatedStart();            //Send repeat start condition
     I2C_Write(0x7D);                //Send 7 bit address + Read
-    linesensor[]=I2C_Read();
+    linesensor=I2C_Read();
     I2C_Stop();                     //Send Stop condition
-    return linesensor[];
+    return linesensor;
 }
 

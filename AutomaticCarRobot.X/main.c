@@ -48,7 +48,7 @@ void MotorCoast(void);
 void wait10ms(int del);
 void MotorSpeed(void);
 void MotorAngle(void);
-void AddSpeed(int u, int sOrA);
+void AddSpeed(int u, int speedOrAngle);
 void SwitchLane(void);
 int DetectPLine(void);
 void I2C_Initialise(void);

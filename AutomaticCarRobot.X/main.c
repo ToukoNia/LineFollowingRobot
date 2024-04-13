@@ -1,6 +1,6 @@
 /*
  * File:   main.c
- * Author: Rayne
+ * Author: Group 14
  *
  * Created on 08 March 2024, 21:59
  */
@@ -32,7 +32,7 @@
 #define LOOKUP [[1 0 0 0 0 0] [1 1 1 1 1 1]]
 #define ENCTURNVAL 8 //defines constant for the number of rotations that is required to turn 90 degrees
 #define COLLISION_THRESH 800 //defines constant to begin to avoid collision advoidance
-void Setup(void);               //Sets up the values needed to operate the robot
+void Setup(void);               //Sets up the values n1 0 0 0 0 0] [1 1 1 1 1 1]eeded to operate the robot
 
 void FlashLED(void);            //flashes the LEDs on or off for 5 seconds
 void allLED(int val);           //sets every LED to either on or off based on if one or zero entered.
@@ -47,6 +47,15 @@ unsigned int readRADC(void);    //Read ADC
 
 void wait10ms(int del);         //delay function
 
+//I2C setup functions prototype
+void I2C_Initialise(void);          //Initialise I2C
+void I2C_checkbus_free(void);   //Wait until I2C bus is free
+void I2C_Start(void);               //Generate I2C start condition
+void I2C_RepeatedStart(void);       //Generate I2C Repeat start condition
+void I2C_Stop(void);                //Generate I2C stop condition
+void I2C_Write(unsigned char write);    //Generate I2C write condition
+unsigned char I2C_Read(void);       //Generate I2C read condition
+
 void main(void) {
     Setup();
     return;
@@ -58,27 +67,33 @@ void Setup(){
     TRISCbits.RC2=0;       //set CCP1(pin13) to an output pin
     TRISB=0b00000000;      //set Motor pins to be output pins
     TRISA=0b11001111;      //set Motor pins to be output pins
-    PR2 = 0b11111111;     //set period of PWM  
-    T2CON = 0b00000111 ;   //Timer 2(TMR2) on, Prescaler = 16  
-   
+    PR2 = 0b11111111;     //set period of PWM
+    T2CON = 0b00000111 ;   //Timer 2(TMR2) on, Prescaler = 16
+
     CCP1CON = (0x0c);        //0x0c enables PWM module CCP1
     CCP2CON = (0x0c);        //0x0c enables PWM module CCP2
 
     CCPR1L = markspace;  //Load duty cycle into CCP1CON, PWM begins (Right)
     CCPR2L = markspace;  //Load duty cycle into CCP2CON, PWM begins (Left)
-   
+
     ADCON1=0b00001101;  //Set voltage reference and port A0 as analogue input
     ADCON2=0b10000010; // Fosc/32, A/D result right justified
     LATB=0;             //Turn all Leds off
-    FlashLED();
-    
-    //NEED TO ALTER CODE TO SET UP PARTS CORRECTLy FOR I2C
+
+    TRISCbits.RC3=1; //Set the RC3 pin as input
+    TRISCbits.RC4=4; //Set the RC4 pin as output
+    I2C_Initialise(); //Initialise the I2C
+
+    FlashLED(); //Flash the LED after set up
+
+    //Should be ok?
 }
+
 
 unsigned int readRADC() {
 
     ADCON0 = 0b00000111; //select A/D channel AN0,start conversion
-   
+
     while (ADCON0bits.GO){}; //do nothing while conversion in progress
     return ((ADRESH << 8) + ADRESL); //Combines high and low A/D bytes into one
 }                                 // value and returns this A/D value 0-1023
@@ -90,7 +105,6 @@ unsigned int readLADC() {
     return ((ADRESH << 8) + ADRESL); //Combines high and low A/D bytes into one
     }                                 // value and returns this A/D value 0-1023
 
-
 void FlashLED(){
     for (int i=0;i<5;i++){
         allLED(1);             //turn all LEDs on
@@ -99,6 +113,7 @@ void FlashLED(){
         wait10ms(50);          //wait 1 second
 }
 }
+
 void allLED(int val){ //sets every LED to either on or off based on if one or zero entered.
     LED1=val; //sets LED1 to the value specified
     LED2=val; //sets LED2 to the value specified etc...
@@ -113,12 +128,13 @@ void MotorForwards(){
 
     A1=0;
     A2=1; //sets right motor to forwards
-   
+
     B1=0;
     B2=1;
           //sets left  motor to forwards
     return;
 }
+
 void TurnRight(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
@@ -136,6 +152,7 @@ void TurnRight45(){
     EncoderChecker(ENCTURNVAL);
     return;
 }
+
 void TurnRight180(){
     TurnRight();
     EncoderChecker(4*ENCTURNVAL);
@@ -153,10 +170,10 @@ void EncoderChecker(int encVal){
             B2=1;
         }
         if (encCountR >= encVal){      //Checks right value against the turn constant and brakes right motor if met
-            A1=1; 
+            A1=1;
             A2=1;
         }
-        wait10ms(1);        
+        wait10ms(1);
     };
 
 }
@@ -164,11 +181,12 @@ void EncoderChecker(int encVal){
 void MotorBrake(){
     A1=1;
     A2=1; //sets right motor to brake
-   
+
     B1=1;
     B2=1; //sets left motor to brake
     return;
 }
+
 void MotorCoast(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
@@ -178,9 +196,158 @@ void MotorCoast(){
     B2=0; //tells all motors to coast
     return;
 }
+
 void wait10ms(int del){     //delay function
     unsigned int c;
     for(c=0;c<del;c++)
         __delay_ms(10);
     return;
+}
+
+
+
+void MotorAngle() {
+    int angle; //Set a default angle
+    int error;
+    int u;
+    do {
+        int colourArray[] = readSensorArray(); //Import array data
+        switch (colourArray) {
+            case 0b11111110:
+                angle = 12;
+                break;
+            case 0b11111100:
+                angle = 10;
+                break;
+            case 0b11111101:
+                angle = 9;
+                break;
+            case 0b11111001:
+                angle = 7;
+                break;
+            case 0b11111011:
+                angle = 5;
+                break;
+            case 0b11110011:
+                angle = 3;
+                break;
+            case 0b11110111:
+                angle = 2;
+                break;
+            case 0b11101111:
+                angle = -2;
+                break;
+            case 0b11001111:
+                angle = -3;
+                break;
+            case 0b11011111:
+                angle = -5;
+                break;
+            case 0b10011111:
+                angle = -7;
+                break;
+            case 0b10111111:
+                angle = -9;
+                break;
+            case 0b01111111:
+                angle = -10;
+                break;
+            case 0b11111111:
+                angle = -12;
+                break;
+            default:
+                angle = 0;
+                break;
+        }
+        error = 0 - angle; //Error math
+        u = 4*error; //Gain = 4
+        AddSpeed(u,0); //Add speed to the motor and set mode to Angle
+    }while (angle != 0);
+}
+
+void AddSpeed(int u, int sOrA) {    //
+    if ((CCPR1L+u) > 1023){
+        CCPR1L = 1023;
+    } else if ((CCPR1L+u)<0) {
+        CCPR1L = 0;
+    } else {
+        CCPR1L = CCPR1L + u;
+    }
+    if (sOrA == 0){
+        u = -u;
+    }
+    if ((CCPR2L+u)>1023){
+        CCPR2L=1023;
+    }
+    else if ((CCPR2L+u)<0){
+        CCPR2L=0;
+    } else {
+    CCPR2L= CCPR2L+ u;
+    }
+}
+
+void I2C_Initialise(void)      //Initialise I2C
+{
+  SSPCON1 = 0b00101000;     //set to master mode, enable SDA and SCL pins
+  SSPCON2 = 0;                  //reset control register 2
+  SSPADD = 0x63;                //set baud rate to 100KHz
+  SSPSTAT = 0;                  //reset status register
+  }
+
+void I2C_checkbus_free(void)        //Wait until I2C bus is free, this is WaitI2C in the flowchart
+{
+  while ((SSPSTAT & 0x04) || (SSPCON2 & 0x1F));    //wait until I2C bus is free
+}
+
+
+void I2C_Start(void)        //Generate I2C start condition
+{
+  I2C_checkbus_free();      //Test to see I2C bus is free
+  SEN = 1;                  //Generate start condition,SSPCON2 bit 0 = 1
+}
+
+
+void I2C_RepeatedStart(void)     //Generate I2C Repeat start condition
+{
+  I2C_checkbus_free();          //Test to see I2C bus is free
+  RSEN = 1;                     //Generate repeat start, SSPCON2 bit1 = 1
+}
+
+
+void I2C_Stop(void)         //Generate I2C stop condition
+{
+  I2C_checkbus_free();          //Test to see I2C bus is free
+  PEN = 1;                      // Generate stop condition,SSPCON2 bit2 = 1
+}
+
+
+void I2C_Write(unsigned char write)     //Write to slave
+{
+  I2C_checkbus_free();          //check I2C bus is free
+  SSPBUF = write;               //Send data to transmit buffer
+}
+
+
+unsigned char I2C_Read(void)    //Read from slave
+{
+  unsigned char temp[];
+  I2C_checkbus_free();      //Test to see I2C bus is free
+  RCEN = 1;                 //enable receiver,SSPCON2 bit3 = 1
+  I2C_checkbus_free();      //Test to see I2C bus is free
+  temp = SSPBUF;            //Read slave
+  I2C_checkbus_free();      //Test to see I2C bus is free
+  ACKEN = 1;                //Acknowledge
+  return temp[];              //return sensor array data
+}
+
+unsigned char readSensorArray() {
+    unsigned char linesensor[];
+    I2C_Start();                    //Send Start condition to slave
+    I2C_Write(0x7C);                //Send 7 bit address + Write to slave
+    I2C_Write(0x11);                //Write data, select RegdataA and send to slave
+    I2C_RepeatedStart();            //Send repeat start condition
+    I2C_Write(0x7D);                //Send 7 bit address + Read
+    linesensor[]=I2C_Read();
+    I2C_Stop();                     //Send Stop condition
+    return linesensor[];
 }

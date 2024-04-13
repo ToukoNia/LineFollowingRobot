@@ -96,7 +96,6 @@ void Setup(){
     //Should be ok?
 }
 
-
 unsigned int readRADC() {
 
     ADCON0 = 0b00000111; //select A/D channel AN0,start conversion
@@ -112,7 +111,7 @@ unsigned int readLADC() {
     return ((ADRESH << 8) + ADRESL); //Combines high and low A/D bytes into one
     }                                 // value and returns this A/D value 0-1023
 
-void FlashLED(){
+void FlashLED(){       //flashes the LEDs on and off for 5 seconds
     for (int i=0;i<5;i++){
         allLED(1);             //turn all LEDs on
         wait10ms(50);          //wait 1 second
@@ -348,50 +347,38 @@ int DetectPLine() {
     }
 }
 
-void I2C_Initialise(void)      //Initialise I2C
-{
+void I2C_Initialise(void){      //Initialise I2C
   SSPCON1 = 0b00101000;     //set to master mode, enable SDA and SCL pins
   SSPCON2 = 0;                  //reset control register 2
   SSPADD = 0x63;                //set baud rate to 100KHz
   SSPSTAT = 0;                  //reset status register
   }
 
-void I2C_checkbus_free(void)        //Wait until I2C bus is free, this is WaitI2C in the flowchart
-{
+void I2C_checkbus_free(void){        //Wait until I2C bus is free, this is WaitI2C in the flowchart
   while ((SSPSTAT & 0x04) || (SSPCON2 & 0x1F));    //wait until I2C bus is free
 }
 
-
-void I2C_Start(void)        //Generate I2C start condition
-{
+void I2C_Start(void){        //Generate I2C start condition
   I2C_checkbus_free();      //Test to see I2C bus is free
   SEN = 1;                  //Generate start condition,SSPCON2 bit 0 = 1
 }
 
-
-void I2C_RepeatedStart(void)     //Generate I2C Repeat start condition
-{
+void I2C_RepeatedStart(void){     //Generate I2C Repeat start condition
   I2C_checkbus_free();          //Test to see I2C bus is free
   RSEN = 1;                     //Generate repeat start, SSPCON2 bit1 = 1
 }
 
-
-void I2C_Stop(void)         //Generate I2C stop condition
-{
+void I2C_Stop(void){         //Generate I2C stop condition
   I2C_checkbus_free();          //Test to see I2C bus is free
   PEN = 1;                      // Generate stop condition,SSPCON2 bit2 = 1
 }
 
-
-void I2C_Write(unsigned char write)     //Write to slave
-{
+void I2C_Write(unsigned char write){     //Write to slave
   I2C_checkbus_free();          //check I2C bus is free
   SSPBUF = write;               //Send data to transmit buffer
 }
 
-
-unsigned char I2C_Read(void)    //Read from slave
-{
+unsigned char I2C_Read(void){    //Read from slave
   unsigned char temp;
   I2C_checkbus_free();      //Test to see I2C bus is free
   RCEN = 1;                 //enable receiver,SSPCON2 bit3 = 1

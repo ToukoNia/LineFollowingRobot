@@ -229,11 +229,11 @@ void MotorSpeed(){
 }
 
 void MotorAngle() {
-    int angle; //Set a default angle
+    int angle; //Initalise variables
     int error;
     int u;
     do {
-        char colourArray = ReadSensorArray(); //Import array data
+        unsigned char colourArray = ReadSensorArray(); //Import array data
         switch (colourArray) {
             case 0b11111110:
                 angle = 12;
@@ -313,12 +313,13 @@ void AutomaticLineFollow(int a) {
     }
 }
 
-void AddSpeed(int u, int sOrA) {    //
+void AddSpeed(int u, int speedOrAngle) {    //
     CCPR1L = (CCPR1L + u) > 1023 ? 1023 : ((CCPR1L + u) < 0 ? 0 : CCPR1L + u);  //compares CCPR1L+u with 0, if its greater=CCPR1L+u, otherwise equals 0. It then does the same check with 1023
 
-    if (sOrA == 0){
+    if (!speedOrAngle){ //if 0 is passed in (sets it to the angle)
         u = -u;
     }
+
     CCPR2L = (CCPR2L + u) > 1023 ? 1023 : ((CCPR2L + u) < 0 ? 0 : CCPR2L + u);  //same as above
 }
 

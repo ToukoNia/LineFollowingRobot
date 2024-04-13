@@ -33,24 +33,24 @@
 #define COLLISION_THRESH 800 //defines constant to begin to avoid collision advoidance
 #define K 4
 
-void Setup();
-unsigned int readRADC();
-unsigned int readLADC();
-void FlashLED();
+void Setup(void);
+unsigned int readRADC(void);
+unsigned int readLADC(void);
+void FlashLED(void);
 void allLED(int val);
-void MotorForwards();
-void TurnRight();
-void TurnRight45();
-void TurnRight180();
+void MotorForwards(void);
+void TurnRight(void);
+void TurnRight45(void);
+void TurnRight180(void);
 void EncoderChecker(int encVal);
-void MotorBrake();
-void MotorCoast();
+void MotorBrake(void);
+void MotorCoast(void);
 void wait10ms(int del);
-void MotorSpeed();
-void MotorAngle();
+void MotorSpeed(void);
+void MotorAngle(void);
 void AddSpeed(int u, int sOrA);
-void SwitchLane();
-int DetectPLine();
+void SwitchLane(void);
+int DetectPLine(void);
 void I2C_Initialise(void);
 void I2C_checkbus_free(void);
 void I2C_Start(void);
@@ -93,9 +93,8 @@ void Setup(){
 
     FlashLED(); //Flash the LED after set up
 
-    //Should be ok?
+    //Set up complete
 }
-
 
 unsigned int readRADC() {
 
@@ -112,7 +111,7 @@ unsigned int readLADC() {
     return ((ADRESH << 8) + ADRESL); //Combines high and low A/D bytes into one
     }                                 // value and returns this A/D value 0-1023
 
-void FlashLED(){
+void FlashLED(){       //flashes the LEDs on and off for 5 seconds
     for (int i=0;i<5;i++){
         allLED(1);             //turn all LEDs on
         wait10ms(50);          //wait 1 second
@@ -124,8 +123,10 @@ void FlashLED(){
 void allLED(int val){ //sets every LED to either on or off based on if one or zero entered.
     LED1=val; //sets LED1 to the value specified
     LED2=val; //sets LED2 to the value specified
-    LED3=val; //sets LED1 to the value specified
-    LED4=val; //sets LED1 to the value specified
+
+    LED3=val; //sets LED3 to the value specified
+    LED4=val; //sets LED4 to the value specified
+
     return;
 }
 
@@ -289,17 +290,17 @@ void MotorAngle() {
 
 void MotorPath() {
     AutomaticLineFollow(2); //Go through outer lane twice
-    MotorBrake();
-    SwitchLane();
+    MotorBrake(); //Brake
+    SwitchLane(); //Switch to inner lane
     AutomaticLineFollow(2); //Go through inner lane once
-    MotorBrake();
+    MotorBrake(); //Brake
     wait10ms(500); //Waits 5 seconds
-    TurnRight180();
+    TurnRight180(); //Turn around
     AutomaticLineFollow(1); //Go through inner lane in other direction
-    SwitchLane();
+    SwitchLane(); //Switch to outer lane
     AutomaticLineFollow(1); //Go through outer lane in other direction
-    MotorBrake();
-    wait10ms(500);
+    MotorBrake(); //Brake
+    wait10ms(500); //Waits 5 seconds
 }
 
 void AutomaticLineFollow(int a) {
@@ -307,20 +308,20 @@ void AutomaticLineFollow(int a) {
 
     // Loop until 'numberPassed' is less than 'a'
     while (numberPassed < a) {
-        MotorSpeed();
-        MotorAngle();
+        MotorSpeed(); //Modify speed for robot in front if needed
+        MotorAngle(); //Makes sure the robot follows the line
         numberPassed += DetectPLine();
     }
 }
 
-void AddSpeed(int u, int speedOrAngle) {    //
-    CCPR1L = (CCPR1L + u) > 1023 ? 1023 : ((CCPR1L + u) < 0 ? 0 : CCPR1L + u);  //compares CCPR1L+u with 0, if its greater=CCPR1L+u, otherwise equals 0. It then does the same check with 1023
+void AddSpeed(int u, int speedOrAngle) {    //Adds speed to motors to respond to MotorSpeed or MotorAngle
+    CCPR1L = (CCPR1L + u) > 1023 ? 1023 : ((CCPR1L + u) < 0 ? 0 : CCPR1L + u);  //compares CCPR1L+u with 0, if its greater, change CCPR1L to CCPR1L+u, otherwise equals 0. It then does the same check with 1023
 
     if (!speedOrAngle){ //if 0 is passed in (sets it to the angle)
-        u = -u;
+        u = -u; //If angle, then added speed to one motor is converted to slow down for other motor
     }
 
-    CCPR2L = (CCPR2L + u) > 1023 ? 1023 : ((CCPR2L + u) < 0 ? 0 : CCPR2L + u);  //same as above
+    CCPR2L = (CCPR2L + u) > 1023 ? 1023 : ((CCPR2L + u) < 0 ? 0 : CCPR2L + u);  //compares CCPR2L+u with 0, if its greater, change CCPR2L to CCPR2L+u, otherwise equals 0. It then does the same check with 1023
 }
 
 void SwitchLane() {
@@ -340,58 +341,46 @@ void SwitchLane() {
 }
 
 int DetectPLine() {
-    char arrayDetect = ReadSensorArray();
-    if (arrayDetect == 0b00000000){
-        return 1;
-    } else {
-        return 0;
+    char arrayDetect = ReadSensorArray(); //Read the sensor array
+    if (arrayDetect == 0b00000000){ //If the sensor detects all white (a line)
+        return 1; //line detected
+    } else { //If the sensor does not detect all white
+        return 0; //line not detected
     }
 }
 
-void I2C_Initialise(void)      //Initialise I2C
-{
+void I2C_Initialise(void){      //Initialise I2C
   SSPCON1 = 0b00101000;     //set to master mode, enable SDA and SCL pins
   SSPCON2 = 0;                  //reset control register 2
   SSPADD = 0x63;                //set baud rate to 100KHz
   SSPSTAT = 0;                  //reset status register
   }
 
-void I2C_checkbus_free(void)        //Wait until I2C bus is free, this is WaitI2C in the flowchart
-{
+void I2C_checkbus_free(void){        //Wait until I2C bus is free, this is WaitI2C in the flowchart
   while ((SSPSTAT & 0x04) || (SSPCON2 & 0x1F));    //wait until I2C bus is free
 }
 
-
-void I2C_Start(void)        //Generate I2C start condition
-{
+void I2C_Start(void){        //Generate I2C start condition
   I2C_checkbus_free();      //Test to see I2C bus is free
   SEN = 1;                  //Generate start condition,SSPCON2 bit 0 = 1
 }
 
-
-void I2C_RepeatedStart(void)     //Generate I2C Repeat start condition
-{
+void I2C_RepeatedStart(void){     //Generate I2C Repeat start condition
   I2C_checkbus_free();          //Test to see I2C bus is free
   RSEN = 1;                     //Generate repeat start, SSPCON2 bit1 = 1
 }
 
-
-void I2C_Stop(void)         //Generate I2C stop condition
-{
+void I2C_Stop(void){         //Generate I2C stop condition
   I2C_checkbus_free();          //Test to see I2C bus is free
   PEN = 1;                      // Generate stop condition,SSPCON2 bit2 = 1
 }
 
-
-void I2C_Write(unsigned char write)     //Write to slave
-{
+void I2C_Write(unsigned char write){     //Write to slave
   I2C_checkbus_free();          //check I2C bus is free
   SSPBUF = write;               //Send data to transmit buffer
 }
 
-
-unsigned char I2C_Read(void)    //Read from slave
-{
+unsigned char I2C_Read(void){    //Read from slave
   unsigned char temp;
   I2C_checkbus_free();      //Test to see I2C bus is free
   RCEN = 1;                 //enable receiver,SSPCON2 bit3 = 1
@@ -409,7 +398,7 @@ unsigned char ReadSensorArray() {
     I2C_Write(0x11);                //Write data, select RegdataA and send to slave
     I2C_RepeatedStart();            //Send repeat start condition
     I2C_Write(0x7D);                //Send 7 bit address + Read
-    linesensor=I2C_Read();
+    linesensor=I2C_Read();          //Send data to linesensor
     I2C_Stop();                     //Send Stop condition
     return linesensor;
 }

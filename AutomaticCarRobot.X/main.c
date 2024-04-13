@@ -129,11 +129,11 @@ void MotorForwards(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
 
-    A1=0; //sets right motor to reverse
-    A2=1; //sets right motor to forwards
+    A1=0; //set A1 of motor A to 0 (inactive)
+    A2=1; //set A2 of motor A to 1 (active)
 
-    B1=0; //sets left motor to reverse
-    B2=1; //sets left  motor to forwards
+    B1=0; //set B1 of motor B to 0 (inactive)
+    B2=1; //set B2 of motor B to 1 (active)
 
 }
 
@@ -141,24 +141,24 @@ void TurnRight(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
 
-    A1=1; //sets right motor to forwards
-    A2=0; //sets right motor to reverse
-    B1=0; //sets left motor to reverse
-    B2=1; //sets left  motor to forwards
+    A1=1; //set A1 of motor A to 1 (active)
+    A2=0; //set A2 of motor A to 0 (inactive)
+    B1=0; //set B1 of motor B to 0 (inactive)
+    B2=1; //set B2 of motor B to 1 (active)
 
     return;
 }
 
 void TurnRight45(){
-    TurnRight(); //TurnRight() function
-    EncoderChecker(ENCTURNVAL); //The encoder turn value is sent to the EncoderChecker
-    return;
+    TurnRight(); //Call the function to turn the robot right
+    EncoderChecker(ENCTURNVAL); // Check the encoder values to ensure the robot turns approximately 45 degress
+    return; //Exit the function
 }
 
 void TurnRight180(){
-    TurnRight();
-    EncoderChecker(4*ENCTURNVAL); //The encoder turn value is multiplied by gain 4 and is sent to the EncoderChecker
-    return;
+    TurnRight(); //Call the function to turn the robot right
+    EncoderChecker(4*ENCTURNVAL); //// Check the encoder values to ensure the robot turns approximately 180 degrees (4 times ENCTURNVAL)
+    return; //Exit the function
 }
 
 void EncoderChecker(int encVal){
@@ -186,7 +186,7 @@ void MotorBrake(){
 
     B1=1;
     B2=1; //sets left motor to brake
-    return;
+    return; //Exits the function
 }
 
 void MotorCoast(){
@@ -196,31 +196,30 @@ void MotorCoast(){
     A2=0;
     B1=0;
     B2=0; //tells all motors to coast
-    return;
+    return; //Exits the function
 }
 
-void wait10ms(int del){     //delay function
-    unsigned int c;
-    for(c=0;c<del;c++)
-        __delay_ms(10);     //delay for 1s
-    return;
+void wait10ms(int del){
+    unsigned int c;         //Declare a variable to use as a counter
+    for(c=0;c<del;c++)      //Loop to delay for 'del' multiples of 10 milliseconds
+        __delay_ms(10);     //Call a function to delay for 10 milliseconds
+    return                  //Exit the function
 }
 
 void MotorSpeed(){
-    int distance; //variable to store distance
-    int error;    //variable to store error
+    int distance; //variable to store distance reading from the sensor
+    int error;    //variable to store error between desired and actual speed
     int u;        //variable to store control input
     if (readRADC()>=COLLISION_THRESH){  //check if there are obstacles detected
         MotorBrake();  // Brake if obstacle detected
     } else{
-        MotorForwards();  //Move forwards if no obstacle detected
+        MotorForwards();  //Move forward if no obstacle detected
         distance=readRADC();  //distance is read from sensor
         wait10ms(1);          //wait for a short time
-        distance=distance-readRADC();        //calculates change of distance. if negative, it is too slow and if positive
+        distance=distance-readRADC();        //calculates change of distance. if negative error, it is too slow and if positive indicates too fast
         error=0-distance/10;                //calculates speed off mm/ms=m/s
-        u=K*error;  //K is a constant representing the control gain
-        AddSpeed(u,1); //The '1' indicates forward motion
-    }
+        u=K*error;  //Calculate the control input using a proportional control strategy with a constant gain 'K'
+        AddSpeed(u,1); //Adjust motor speed based on the control input, indicating forward motion
 }
 
 void MotorAngle() {
@@ -319,14 +318,14 @@ void AddSpeed(int u, int speedOrAngle) {    //Adds speed to motors to respond to
 
 void SwitchLane() {
     while (1) {
-        TurnRight45(); // Turn right 45 degrees
+        TurnRight45(); // Turn the robot right by approximately 45 degrees
         MotorForwards(); // Move forward
         wait10ms(50);   // Wait for 0.5 seconds
-        unsigned char sensorData = ReadSensorArray();   // Read sensor array
+        unsigned char sensorData = ReadSensorArray();   // Read data from sensor array
 
-        // Check if sensor data indicates the desired lane (example: all sensors are activated)
+        // Check if sensor data indicates that the robot has deviated from the desired lane
         if (sensorData != 0b1111111) {
-            MotorBrake(); // Brake if lane is not detected
+            MotorBrake(); // Brake robot if lane is not detected
             break; // Exit the loop
         }
     }

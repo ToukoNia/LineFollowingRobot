@@ -123,9 +123,9 @@ void FlashLED(){
 
 void allLED(int val){ //sets every LED to either on or off based on if one or zero entered.
     LED1=val; //sets LED1 to the value specified
-    LED2=val; //sets LED2 to the value specified etc...
-    LED3=val;
-    LED4=val;
+    LED2=val; //sets LED2 to the value specified
+    LED3=val; //sets LED1 to the value specified
+    LED4=val; //sets LED1 to the value specified
     return;
 }
 
@@ -133,12 +133,12 @@ void MotorForwards(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
 
-    A1=0;
+    A1=0; //sets right motor to reverse
     A2=1; //sets right motor to forwards
 
-    B1=0;
-    B2=1;
-          //sets left  motor to forwards
+    B1=0; //sets left motor to reverse
+    B2=1; //sets left  motor to forwards
+
     return;
 }
 
@@ -146,41 +146,41 @@ void TurnRight(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
 
-    A1=1;
+    A1=1; //sets right motor to forwards
     A2=0; //sets right motor to reverse
-    B1=0;
-    B2=1;
-          //sets left  motor to forwards
+    B1=0; //sets left motor to reverse
+    B2=1; //sets left  motor to forwards
+
     return;
 }
 
 void TurnRight45(){
-    TurnRight();
-    EncoderChecker(ENCTURNVAL);
+    TurnRight(); //TurnRight() function
+    EncoderChecker(ENCTURNVAL); //The encoder turn value is sent to the EncoderChecker
     return;
 }
 
 void TurnRight180(){
     TurnRight();
-    EncoderChecker(4*ENCTURNVAL);
+    EncoderChecker(4*ENCTURNVAL); //The encoder turn value is multiplied by gain 4 and is sent to the EncoderChecker
     return;
 }
 
 void EncoderChecker(int encVal){
-    unsigned int encCountL=0;
-    unsigned int encCountR=0;
-    while(encCountL<encVal || encCountR<encVal){ //loops until both constants are met
+    unsigned int encCountL=0; //Initialize the left encoder count
+    unsigned int encCountR=0; //Initialize the right encoder count
+    while(encCountL<encVal || encCountR<encVal){  //loops until both constants are met
         encCountR=encCountR+REnc;           //sums encoder values. The value is 1 when a turn is complete, and 0 otherwise. Hence, will only increment it if true
         encCountL=encCountL+LEnc;
-        if (encCountL >= encVal){       //Checks left value against the turn constant and brakes left motor if met
-            B1=1;
+        if (encCountL >= encVal){       //Checks if left encoder count has reaches "encVal"
+            B1=1; //If the left encoder count meets or exceeds "encVal", brake the left motor
             B2=1;
         }
-        if (encCountR >= encVal){      //Checks right value against the turn constant and brakes right motor if met
-            A1=1;
+        if (encCountR >= encVal){      //Checks if the right encoder count has reaches "encVal"
+            A1=1;  // If right encoder count meets or exceeds encVal, brake the right motor
             A2=1;
         }
-        wait10ms(1);
+        wait10ms(1); //wait for a short duration before checking again
     };
 
 }
@@ -207,34 +207,34 @@ void MotorCoast(){
 void wait10ms(int del){     //delay function
     unsigned int c;
     for(c=0;c<del;c++)
-        __delay_ms(10);
+        __delay_ms(10);     //delay for 1s
     return;
 }
 
 void MotorSpeed(){
-    int distance;
-    int error;
-    int u;
-    if (readRADC()>=COLLISION_THRESH){
-        MotorBrake();
+    int distance; //variable to store distance
+    int error;    //variable to store error
+    int u;        //variable to store control input
+    if (readRADC()>=COLLISION_THRESH){  //check if there are obstacles detected
+        MotorBrake();  // Brake if obstacle detected
     } else{
-        MotorForwards();
-        distance=readRADC();
-        wait10ms(1);
+        MotorForwards();  //Move forwards if no obstacle detected
+        distance=readRADC();  //distance is read from sensor
+        wait10ms(1);          //wait for a short time
         distance=distance-readRADC();        //calculates change of distance. if negative, it is too slow and if positive
         error=0-distance/10;                //calculates speed off mm/ms=m/s
-        u=K*error;
-        AddSpeed(u,1);
+        u=K*error;  //K is a constant representing the control gain
+        AddSpeed(u,1); //The '1' indicates forward motion
     }
 }
 
 void MotorAngle() {
-    int angle; //Initalise variables
-    int error;
-    int u;
+    int angle; //variable to store angle
+    int error; //variable to store error
+    int u;     //variable to store control input
     do {
         unsigned char colourArray = ReadSensorArray(); //Import array data
-        switch (colourArray) {
+        switch (colourArray) {   // Angle is determined based on the sensor array data
             case 0b11111110:
                 angle = 12;
                 break;
@@ -278,13 +278,13 @@ void MotorAngle() {
                 angle = -12;
                 break;
             default:
-                angle = 0;
+                angle = 0;  //default angle if there is no matching case
                 break;
         }
         error = 0 - angle; //Error math
         u = 4*error; //Gain = 4
         AddSpeed(u,0); //Add speed to the motor and set mode to Angle
-    }while (angle != 0);
+    }while (angle != 0); // continue looping until the angle reaches 0
 }
 
 void MotorPath() {

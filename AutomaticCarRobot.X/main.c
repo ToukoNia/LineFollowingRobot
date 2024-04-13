@@ -44,6 +44,8 @@ void EncoderChecker(int encVal);
 void MotorBrake(void);
 unsigned int readLADC(void);    //Read ADC
 unsigned int readRADC(void);    //Read ADC
+void MotorSpeed(int )
+int DetectPLine(void);
 
 void wait10ms(int del);         //delay function
 
@@ -301,18 +303,24 @@ void SwitchLane() {
     while (1) {
         TurnRight45(); // Turn right 45 degrees
         MotorForwards(); // Move forward
-
         // Wait for 0.5 seconds
         wait10ms(50);
-
         // Read sensor array
         unsigned char sensorData[] = readSensorArray();
-
         // Check if sensor data indicates the desired lane (example: all sensors are activated)
         if (sensorData != 0b1111111) {
             MotorBrake(); // Brake if lane is not detected
             break; // Exit the loop
         }
+    }
+}
+
+int DetectPLine() {
+    int arrayDetect[] = readSensorArray();
+    if (arrayDetect == 0b00000000){
+        return 1;
+    } else {
+        return 0;
     }
 }
 

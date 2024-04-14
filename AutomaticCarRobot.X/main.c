@@ -35,7 +35,6 @@
 
 void Setup(void);
 unsigned int readRADC(void);
-unsigned int readLADC(void);
 void FlashLED(void);
 void allLED(int val);
 void MotorForwards(void);
@@ -44,7 +43,6 @@ void TurnRight45(void);
 void TurnRight180(void);
 void EncoderChecker(int encVal);
 void MotorBrake(void);
-void MotorCoast(void);
 void wait10ms(int del);
 void MotorSpeed(void);
 void MotorAngle(void);
@@ -65,6 +63,7 @@ void MotorPath(void);
 
 void main(void) {
     Setup();
+    MotorPath();
     return;
 }
 
@@ -94,23 +93,38 @@ void Setup(){
     FlashLED(); //Flash the LED after set up
 
     //Set up complete
+    return;
 }
 
-unsigned int readRADC() {
-    ADCON0 = 0b00000111; //select A/D channel AN0,start conversion
-    while (ADCON0bits.GO){}; //do nothing while conversion in progress
-    return ((ADRESH << 8) + ADRESL); //Combines high and low A/D bytes into one
-}                                 // value and returns this A/D value 0-1023
+void MotorPath() {
+    AutomaticLineFollow(2); //Go through outer lane twice
+    SwitchLane(); //Switch to inner lane
+    AutomaticLineFollow(2); //Go through inner lane once
+    MotorBrake(); //Brake
+    wait10ms(500); //Waits 5 seconds
+    TurnRight180(); //Turn around
+    AutomaticLineFollow(1); //Go through inner lane in other direction
+    SwitchLane(); //Switch to outer lane
+    AutomaticLineFollow(1); //Go through outer lane in other direction
+    MotorBrake(); //Brake
+    wait10ms(500); //Waits 5 seconds
+    return;
+}
 
-unsigned int readLADC() {
+void AutomaticLineFollow(int a) {
+    unsigned int numberPassed = 0; // Declare and initialize the variable
 
-    ADCON0 = 0b00000011; //select A/D channel AN0,start conversion
-    while (ADCON0bits.GO){}; //do nothing while conversion in progress
-    return ((ADRESH << 8) + ADRESL); //Combines high and low A/D bytes into one
-    }                                 // value and returns this A/D value 0-1023
+    // Loop until 'numberPassed' is less than 'a'
+    while (numberPassed < a) {
+        MotorSpeed(); //Modify speed to stay with robot in front if needed
+        MotorAngle(); //Makes sure the robot follows the line
+        numberPassed += DetectPLine();  //if detecting the passing line, increment amount of loops by one.
+    }
+    return;
+}
 
 void FlashLED(){       //flashes the LEDs on and off for 5 seconds
-    for (int i=0;i<5;i++){
+    for (unsigned int i=0;i<5;i++){
         allLED(1);             //turn all LEDs on
         wait10ms(50);          //wait 1 second
         allLED(0);             //turn all LEDs off
@@ -129,11 +143,11 @@ void MotorForwards(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
 
-    A1=0; //set A1 of motor A to 0 (inactive)
-    A2=1; //set A2 of motor A to 1 (active)
+    A1=0; //set A1 of motor A to 0 (low)
+    A2=1; //set A2 of motor A to 1 (high)
 
-    B1=0; //set B1 of motor B to 0 (inactive)
-    B2=1; //set B2 of motor B to 1 (active)
+    B1=0; //set B1 of motor B to 0 (low)
+    B2=1; //set B2 of motor B to 1 (high)
 
 }
 
@@ -141,10 +155,13 @@ void TurnRight(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
 
-    A1=1; //set A1 of motor A to 1 (active)
-    A2=0; //set A2 of motor A to 0 (inactive)
-    B1=0; //set B1 of motor B to 0 (inactive)
-    B2=1; //set B2 of motor B to 1 (active)
+    A1=1; //set A1 of motor A to 1 (high)
+    A2=0; //set A2 of motor A to 0 (low)
+    //this sets the right wheel to reverse
+
+    B1=0; //set B1 of motor B to 0 (low)
+    B2=1; //set B2 of motor B to 1 (high)
+    //this sets the left wheel to forwards
 
     return;
 }
@@ -181,52 +198,58 @@ void EncoderChecker(int encVal){
 }
 
 void MotorBrake(){
-    A1=1;
+    A1=1; //sets left motor pins to high
     A2=1; //sets right motor to brake
 
-    B1=1;
+    B1=1; //sets left motor pins to high
     B2=1; //sets left motor to brake
     return; //Exits the function
 }
 
-void MotorCoast(){
-    CCP1CON=0b00001100; //enables PWMA
-    CCP2CON=0b00001100; //enables PWMB
-    A1=0;
-    A2=0;
-    B1=0;
-    B2=0; //tells all motors to coast
-    return; //Exits the function
-}
+
+unsigned int readRADC() {
+    ADCON0 = 0b00000111; //select A/D channel AN0,start conversion
+    while (ADCON0bits.GO){}; //do nothing while conversion in progress
+    return ((ADRESH << 8) + ADRESL); //Combines high and low A/D bytes into one
+}                                 // value and returns this A/D value 0-1023
+/*
+unsigned int readLADC() {
+    ADCON0 = 0b00000011; //select A/D channel AN0,start conversion
+    while (ADCON0bits.GO){}; //do nothing while conversion in progress
+    return ((ADRESH << 8) + ADRESL); //Combines high and low A/D bytes into one
+}                                 // value and returns this A/D value 0-1023
+*/
 
 void wait10ms(int del){
     unsigned int c;         //Declare a variable to use as a counter
     for(c=0;c<del;c++)      //Loop to delay for 'del' multiples of 10 milliseconds
         __delay_ms(10);     //Call a function to delay for 10 milliseconds
-    return                  //Exit the function
+    return;              //Exit the function
 }
 
 void MotorSpeed(){
-    int distance; //variable to store distance reading from the sensor
-    int error;    //variable to store error between desired and actual speed
-    int u;        //variable to store control input
+    int distance; //variable to store distances
+    int error;    //variable to store error between desired (0) and actual speed differences between the cars
+    int u;        //variable to store control response
     if (readRADC()>=COLLISION_THRESH){  //check if there are obstacles detected
         MotorBrake();  // Brake if obstacle detected
     } else{
         MotorForwards();  //Move forward if no obstacle detected
         distance=readRADC();  //distance is read from sensor
-        wait10ms(1);          //wait for a short time
+        wait10ms(1);          //wait for a short time to sample distance change
         distance=distance-readRADC();        //calculates change of distance. if negative error, it is too slow and if positive indicates too fast
         error=0-distance/10;                //calculates speed off mm/ms=m/s
-        u=K*error;  //Calculate the control input using a proportional control strategy with a constant gain 'K'
-        AddSpeed(u,1); //Adjust motor speed based on the control input, indicating forward motion
+        u=K*error;  //Calculate the control response using a proportional control strategy with a constant gain 'K'
+        AddSpeed(u,1); //Adjust motor speed based on the control response, with both motors being altered equally
+    }
+    return;
 }
 
 void MotorAngle() {
     int angle; //variable to store angle
     int error; //variable to store error
-    int u;     //variable to store control input
-    unsigned char colourArray = ReadSensorArray(); //Import array data
+    int u;     //variable to store control response
+    unsigned char colourArray = ReadSensorArray(); //Read array data from the colour sensor
     switch (colourArray) {   // Angle is determined based on the sensor array data
         case 0b11111110:
             angle = 12;
@@ -273,40 +296,17 @@ void MotorAngle() {
         default:
             angle = 0;  //default angle if there is no matching case
             break;
-    }
-    error = 0 - angle; //Error math
+    }   //can add ability for the robot to completely stop when no line detected if required
+    error = 0 - angle; //Calculates the error between the desired angle and the actual angle
     u = 4*error; //Gain = 4
-    AddSpeed(u,0); //Add speed to the motor and set mode to Angle
-
+    AddSpeed(u,0); //Change the speeds on the motor and set mode to Angle
+    return;
 }
 
-void MotorPath() {
-    AutomaticLineFollow(2); //Go through outer lane twice
-    MotorBrake(); //Brake
-    SwitchLane(); //Switch to inner lane
-    AutomaticLineFollow(2); //Go through inner lane once
-    MotorBrake(); //Brake
-    wait10ms(500); //Waits 5 seconds
-    TurnRight180(); //Turn around
-    AutomaticLineFollow(1); //Go through inner lane in other direction
-    SwitchLane(); //Switch to outer lane
-    AutomaticLineFollow(1); //Go through outer lane in other direction
-    MotorBrake(); //Brake
-    wait10ms(500); //Waits 5 seconds
-}
 
-void AutomaticLineFollow(int a) {
-    int numberPassed = 0; // Declare and initialize the variable
-
-    // Loop until 'numberPassed' is less than 'a'
-    while (numberPassed < a) {
-        MotorSpeed(); //Modify speed for robot in front if needed
-        MotorAngle(); //Makes sure the robot follows the line
-        numberPassed += DetectPLine();  //if detecting the passing line, increment amount of loops by one.
-    }
-}
 
 void AddSpeed(int u, int speedOrAngle) {    //Adds speed to motors to respond to MotorSpeed or MotorAngle
+    //CCPR1L controls the right motor speed and vice versa
     CCPR1L = (CCPR1L + u) > 1023 ? 1023 : ((CCPR1L + u) < 0 ? 0 : CCPR1L + u);  //compares CCPR1L+u with 0, if its greater, change CCPR1L to CCPR1L+u, otherwise equals 0. It then does the same check with 1023
 
     if (!speedOrAngle){ //if 0 is passed in (sets it to the angle)
@@ -314,18 +314,19 @@ void AddSpeed(int u, int speedOrAngle) {    //Adds speed to motors to respond to
     }
 
     CCPR2L = (CCPR2L + u) > 1023 ? 1023 : ((CCPR2L + u) < 0 ? 0 : CCPR2L + u);  //compares CCPR2L+u with 0, if its greater, change CCPR2L to CCPR2L+u, otherwise equals 0. It then does the same check with 1023
+    return;
 }
 
 void SwitchLane() {
     while (1) {
         TurnRight45(); // Turn the robot right by approximately 45 degrees
         MotorForwards(); // Move forward
-        wait10ms(50);   // Wait for 0.5 seconds
+        wait10ms(50);   // Wait for 0.5 seconds to clear the other line
         unsigned char sensorData = ReadSensorArray();   // Read data from sensor array
 
-        // Check if sensor data indicates that the robot has deviated from the desired lane
+        // Check if sensor data indicates that the robot has detected the other line
         if (sensorData != 0b1111111) {
-            MotorBrake(); // Brake robot if lane is not detected
+            MotorBrake(); // Brake robot if it finds the new line
             break; // Exit the loop
         }
     }

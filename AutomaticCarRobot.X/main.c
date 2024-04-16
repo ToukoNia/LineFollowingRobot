@@ -46,7 +46,7 @@ void MotorBrake(void);
 void wait10ms(int del);
 void MotorSpeed(void);
 void MotorAngle(void);
-void AddSpeed(int u, int speedOrAngle);
+void AddSpeed(int u, unsigned int speedOrAngle);
 void SwitchLane(void);
 int DetectPLine(void);
 void I2C_Initialise(void);
@@ -129,7 +129,8 @@ void FlashLED(){       //flashes the LEDs on and off for 5 seconds
         wait10ms(50);          //wait 1 second
         allLED(0);             //turn all LEDs off
         wait10ms(50);          //wait 1 second
-}
+    }
+    return;
 }
 
 void allLED(int val){ //sets every LED to either on or off based on if one or zero entered.
@@ -137,6 +138,7 @@ void allLED(int val){ //sets every LED to either on or off based on if one or ze
     LED2=val; //sets LED2 to the value specified
     LED3=val; //sets LED3 to the value specified
     LED4=val; //sets LED4 to the value specified
+    return;
 }
 
 void MotorForwards(){
@@ -148,7 +150,7 @@ void MotorForwards(){
 
     B1=0; //set B1 of motor B to 0 (low)
     B2=1; //set B2 of motor B to 1 (high)
-
+    return;
 }
 
 void TurnRight(){
@@ -194,6 +196,7 @@ void EncoderChecker(int encVal){
         }
         wait10ms(1); //wait for a short duration before checking again
     };
+    return;
 
 }
 
@@ -305,7 +308,7 @@ void MotorAngle() {
 
 
 
-void AddSpeed(int u, int speedOrAngle) {    //Adds speed to motors to respond to MotorSpeed or MotorAngle
+void AddSpeed(int u, unsigned int speedOrAngle) {    //Adds speed to motors to respond to MotorSpeed or MotorAngle
     //CCPR1L controls the right motor speed and vice versa
     CCPR1L = (CCPR1L + u) > 1023 ? 1023 : ((CCPR1L + u) < 0 ? 0 : CCPR1L + u);  //compares CCPR1L+u with 0, if its greater, change CCPR1L to CCPR1L+u, otherwise equals 0. It then does the same check with 1023
 
@@ -330,6 +333,7 @@ void SwitchLane() {
             break; // Exit the loop
         }
     }
+    return;
 }
 
 int DetectPLine() {
@@ -346,7 +350,7 @@ void I2C_Initialise(void){      //Initialise I2C
   SSPCON2 = 0;                  //reset control register 2
   SSPADD = 0x63;                //set baud rate to 100KHz
   SSPSTAT = 0;                  //reset status register
-  }
+}
 
 void I2C_checkbus_free(void){        //Wait until I2C bus is free, this is WaitI2C in the flowchart
   while ((SSPSTAT & 0x04) || (SSPCON2 & 0x1F));    //wait until I2C bus is free

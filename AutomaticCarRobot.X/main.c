@@ -326,6 +326,9 @@ void MotorAngle() {
         case 0b01111111:
             angle = -12;
             break;
+        case 0b00000000:
+            angle=-20;
+            break;
         default:
             angle = 0;  //default angle if there is no matching case
             MotorSpeed();

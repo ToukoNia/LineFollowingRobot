@@ -32,6 +32,7 @@
 #define ENCTURNVAL 8 //defines constant for the number of rotations that is required to turn 90 degrees
 #define COLLISION_THRESH 800 //defines constant to begin to avoid collision advoidance
 #define K 4
+#define Ka 2
 
 void Setup(void);
 unsigned int readRADC(void);
@@ -63,12 +64,15 @@ void MotorPath(void);
 
 void main(void) {
     Setup();
-    MotorPath();
+    MotorForwards();
+    while(1){
+        MotorSpeed();
+    }
     return;
 }
 
 void Setup(){
-    unsigned char markspace=500;     //mark space value for 8 PWM (50% mark space ratio)
+    unsigned char markspace=500;     //mark space value for 16 PWM (50% mark space ratio)
     TRISCbits.RC1=0;       //set CCP1(pin13) to an output pin
     TRISCbits.RC2=0;       //set CCP1(pin13) to an output pin
     TRISB=0b00000000;      //set Motor pins to be output pins
@@ -87,7 +91,7 @@ void Setup(){
     LATB=0;             //Turn all Leds off
 
     TRISCbits.RC3=1; //Set the RC3 pin as input
-    TRISCbits.RC4=4; //Set the RC4 pin as output
+    TRISCbits.RC4=1; //Set the RC4 pin as output
     I2C_Initialise(); //Initialise the I2C
 
     FlashLED(); //Flash the LED after set up
@@ -224,6 +228,7 @@ unsigned int readLADC() {
 */
 
 void wait10ms(int del){
+
     unsigned int c;         //Declare a variable to use as a counter
     for(c=0;c<del;c++)      //Loop to delay for 'del' multiples of 10 milliseconds
         __delay_ms(10);     //Call a function to delay for 10 milliseconds
@@ -252,57 +257,61 @@ void MotorAngle() {
     int angle; //variable to store angle
     int error; //variable to store error
     int u;     //variable to store control response
-    unsigned char colourArray = ReadSensorArray(); //Read array data from the colour sensor
-    switch (colourArray) {   // Angle is determined based on the sensor array data
-        case 0b11111110:
-            angle = 12;
-            break;
-        case 0b11111100:
-            angle = 10;
-            break;
-        case 0b11111101:
-            angle = 9;
-            break;
-        case 0b11111001:
-            angle = 7;
-            break;
-        case 0b11111011:
-            angle = 5;
-            break;
-        case 0b11110011:
-            angle = 3;
-            break;
-        case 0b11110111:
-            angle = 2;
-            break;
-        case 0b11101111:
-            angle = -2;
-            break;
-        case 0b11001111:
-            angle = -3;
-            break;
-        case 0b11011111:
-            angle = -5;
-            break;
-        case 0b10011111:
-            angle = -7;
-            break;
-        case 0b10111111:
-            angle = -9;
-            break;
-        case 0b00111111:
-            angle = -10;
-            break;
-        case 0b01111111:
-            angle = -12;
-            break;
-        default:
-            angle = 0;  //default angle if there is no matching case
-            break;
-    }   //can add ability for the robot to completely stop when no line detected if required
-    error = 0 - angle; //Calculates the error between the desired angle and the actual angle
-    u = 4*error; //Gain = 4
-    AddSpeed(u,0); //Change the speeds on the motor and set mode to Angle
+    do{
+        unsigned char colourArray = ReadSensorArray(); //Read array data from the colour sensor
+        switch (colourArray) {   // Angle is determined based on the sensor array data
+            case 0b11111110:
+                angle = 12;
+                break;
+            case 0b11111100:
+                angle = 10;
+                break;
+            case 0b11111101:
+                angle = 9;
+                break;
+            case 0b11111001:
+                angle = 7;
+                break;
+            case 0b11111011:
+                angle = 5;
+                break;
+            case 0b11110011:
+                angle = 3;
+                break;
+            case 0b11110111:
+                angle = 2;
+                break;
+            case 0b11101111:
+                angle = -2;
+                break;
+            case 0b11001111:
+                angle = -3;
+                break;
+            case 0b11011111:
+                angle = -5;
+                break;
+            case 0b10011111:
+                angle = -7;
+                break;
+            case 0b10111111:
+                angle = -9;
+                break;
+            case 0b00111111:
+                angle = -10;
+                break;
+            case 0b01111111:
+                angle = -12;
+                break;
+            default:
+                angle = 0;  //default angle if there is no matching case
+                break;
+        }   //can add ability for the robot to completely stop when no line detected if required
+        error = 0 - angle; //Calculates the error between the desired angle and the actual angle
+        u = Ka*error; //
+        if (u){
+            AddSpeed(u,0); //Change the speeds on the motor and set mode to Angle
+        }
+    } while (angle!=0);
     return;
 }
 

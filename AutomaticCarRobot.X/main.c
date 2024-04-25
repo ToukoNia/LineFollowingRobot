@@ -29,10 +29,11 @@
 #define LED3 LATBbits.LATB4    //Define LED3
 #define LED4 LATBbits.LATB5    //Define LED4
 
-#define ENCTURNVAL 8 //defines constant for the number of rotations that is required to turn 90 degrees
+#define ENCTURNVAL 9 //defines constant for the number of rotations that is required to turn 90 degrees
 #define COLLISION_THRESH 800 //defines constant to begin to avoid collision advoidance
-#define K 4
-#define Ka 2
+#define Ks 2
+#define K 3
+#define STARTMARKSPACE 500
 
 void Setup(void);
 unsigned int readRADC(void);
@@ -60,19 +61,19 @@ unsigned char I2C_Read(void);
 unsigned char ReadSensorArray();
 void AutomaticLineFollow(int a);
 void MotorPath(void);
+void TurnLeft(void);
+void TurnLeft45(void);
+void ResetMarkspace(void);
 
 
 void main(void) {
+    MotorBrake();
     Setup();
-    MotorForwards();
-    while(1){
-        MotorSpeed();
-    }
+    MotorPath();
     return;
 }
 
 void Setup(){
-    unsigned char markspace=500;     //mark space value for 16 PWM (50% mark space ratio)
     TRISCbits.RC1=0;       //set CCP1(pin13) to an output pin
     TRISCbits.RC2=0;       //set CCP1(pin13) to an output pin
     TRISB=0b00000000;      //set Motor pins to be output pins
@@ -83,8 +84,7 @@ void Setup(){
     CCP1CON = (0x0c);        //0x0c enables PWM module CCP1
     CCP2CON = (0x0c);        //0x0c enables PWM module CCP2
 
-    CCPR1L = markspace;  //Load duty cycle into CCP1CON, PWM begins (Right)
-    CCPR2L = markspace;  //Load duty cycle into CCP2CON, PWM begins (Left)
+    ResetMarkspace();
 
     ADCON1=0b00001101;  //Set voltage reference and port A0 as analogue input
     ADCON2=0b10000010; // Fosc/32, A/D result right justified
@@ -117,12 +117,13 @@ void MotorPath() {
 
 void AutomaticLineFollow(int a) {
     unsigned int numberPassed = 0; // Declare and initialize the variable
-
+    MotorAngle();
+    while(ReadSensorArray()==0b11111111);
     // Loop until 'numberPassed' is less than 'a'
     while (numberPassed < a) {
-        MotorSpeed(); //Modify speed to stay with robot in front if needed
         MotorAngle(); //Makes sure the robot follows the line
         numberPassed += DetectPLine();  //if detecting the passing line, increment amount of loops by one.
+
     }
     return;
 }
@@ -157,6 +158,21 @@ void MotorForwards(){
     return;
 }
 
+void TurnLeft(){
+     CCP1CON=0b00001100; //enables PWMA
+    CCP2CON=0b00001100; //enables PWMB
+
+    A1=0;
+    A2=1;
+    //this sets the right wheel to forward
+
+    B1=1;
+    B2=0;
+    //this sets the left wheel to reverse
+
+    return;
+}
+
 void TurnRight(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
@@ -177,6 +193,12 @@ void TurnRight45(){
     EncoderChecker(ENCTURNVAL); // Check the encoder values to ensure the robot turns approximately 45 degress
     return; //Exit the function
 }
+void TurnLeft45(){
+    TurnLeft(); //Call the function to turn the robot right
+    EncoderChecker(ENCTURNVAL); // Check the encoder values to ensure the robot turns approximately 45 degress
+    return; //Exit the function
+}
+
 
 void TurnRight180(){
     TurnRight(); //Call the function to turn the robot right
@@ -198,7 +220,7 @@ void EncoderChecker(int encVal){
             A1=1;  // If right encoder count meets or exceeds encVal, brake the right motor
             A2=1;
         }
-        wait10ms(1); //wait for a short duration before checking again
+        __delay_ms(5); //wait for a short duration before checking again
     };
     return;
 
@@ -228,14 +250,13 @@ unsigned int readLADC() {
 */
 
 void wait10ms(int del){
-
     unsigned int c;         //Declare a variable to use as a counter
     for(c=0;c<del;c++)      //Loop to delay for 'del' multiples of 10 milliseconds
         __delay_ms(10);     //Call a function to delay for 10 milliseconds
     return;              //Exit the function
 }
 
-void MotorSpeed(){
+void MotorSpeed(){/*
     int distance; //variable to store distances
     int error;    //variable to store error between desired (0) and actual speed differences between the cars
     int u;        //variable to store control response
@@ -251,67 +272,71 @@ void MotorSpeed(){
         AddSpeed(u,1); //Adjust motor speed based on the control response, with both motors being altered equally
     }
     return;
+              * */
+    CCPR1L=CCPR2L=400;
+    MotorForwards();
 }
 
 void MotorAngle() {
     int angle; //variable to store angle
     int error; //variable to store error
     int u;     //variable to store control response
-    do{
-        unsigned char colourArray = ReadSensorArray(); //Read array data from the colour sensor
-        switch (colourArray) {   // Angle is determined based on the sensor array data
-            case 0b11111110:
-                angle = 12;
-                break;
-            case 0b11111100:
-                angle = 10;
-                break;
-            case 0b11111101:
-                angle = 9;
-                break;
-            case 0b11111001:
-                angle = 7;
-                break;
-            case 0b11111011:
-                angle = 5;
-                break;
-            case 0b11110011:
-                angle = 3;
-                break;
-            case 0b11110111:
-                angle = 2;
-                break;
-            case 0b11101111:
-                angle = -2;
-                break;
-            case 0b11001111:
-                angle = -3;
-                break;
-            case 0b11011111:
-                angle = -5;
-                break;
-            case 0b10011111:
-                angle = -7;
-                break;
-            case 0b10111111:
-                angle = -9;
-                break;
-            case 0b00111111:
-                angle = -10;
-                break;
-            case 0b01111111:
-                angle = -12;
-                break;
-            default:
-                angle = 0;  //default angle if there is no matching case
-                break;
-        }   //can add ability for the robot to completely stop when no line detected if required
-        error = 0 - angle; //Calculates the error between the desired angle and the actual angle
-        u = Ka*error; //
-        if (u){
-            AddSpeed(u,0); //Change the speeds on the motor and set mode to Angle
+    unsigned char colourArray = ReadSensorArray(); //Read array data from the colour sensor
+    MotorForwards();
+    switch (colourArray) {   // Angle is determined based on the sensor array data
+        case 0b11111110:
+            angle = 12;
+            break;
+        case 0b11111100:
+            angle = 10;
+            break;
+        case 0b11111101:
+            angle = 9;
+            break;
+        case 0b11111001:
+            angle = 7;
+            break;
+        case 0b11111011:
+            angle = 5;
+            break;
+        case 0b11110011:
+            angle = 3;
+            break;
+        case 0b11110111:
+            angle = 2;
+            break;
+        case 0b11101111:
+            angle = -2;
+            break;
+        case 0b11001111:
+            angle = -3;
+            break;
+        case 0b11011111:
+            angle = -5;
+            break;
+        case 0b10011111:
+            angle = -7;
+            break;
+        case 0b10111111:
+            angle = -9;
+            break;
+        case 0b00111111:
+            angle = -10;
+            break;
+        case 0b01111111:
+            angle = -12;
+            break;
+        default:
+            angle = 0;  //default angle if there is no matching case
+            MotorSpeed();
+            break;
+    }   //can add ability for the robot to completely stop when no line detected if required
+    error = 0 - angle; //Calculates the error between the desired angle and the actual angle
+        u = K*error; //Gain = K
+        if (error){
+             AddSpeed(u,0); //Change the speeds on the motor and set mode to Angle
         }
-    } while (angle!=0);
+
     return;
 }
 
@@ -319,8 +344,8 @@ void MotorAngle() {
 
 void AddSpeed(int u, unsigned int speedOrAngle) {    //Adds speed to motors to respond to MotorSpeed or MotorAngle
     //CCPR1L controls the right motor speed and vice versa
+    //
     CCPR1L = (CCPR1L + u) > 1023 ? 1023 : ((CCPR1L + u) < 0 ? 0 : CCPR1L + u);  //compares CCPR1L+u with 0, if its greater, change CCPR1L to CCPR1L+u, otherwise equals 0. It then does the same check with 1023
-
     if (!speedOrAngle){ //if 0 is passed in (sets it to the angle)
         u = -u; //If angle, then added speed to one motor is converted to slow down for other motor
     }
@@ -329,25 +354,31 @@ void AddSpeed(int u, unsigned int speedOrAngle) {    //Adds speed to motors to r
     return;
 }
 
+void ResetMarkspace(){
+    unsigned char markspace=STARTMARKSPACE;
+    CCPR1L=CCPR2L=STARTMARKSPACE;
+}
 void SwitchLane() {
-    while (1) {
+        unsigned char sensorData;
         TurnRight45(); // Turn the robot right by approximately 45 degrees
         MotorForwards(); // Move forward
-        wait10ms(50);   // Wait for 0.5 seconds to clear the other line
-        unsigned char sensorData = ReadSensorArray();   // Read data from sensor array
-
+        ResetMarkspace();
+        while(ReadSensorArray()!=0b11111111);
         // Check if sensor data indicates that the robot has detected the other line
-        if (sensorData != 0b1111111) {
-            MotorBrake(); // Brake robot if it finds the new line
-            break; // Exit the loop
+        while(1){
+            sensorData = ReadSensorArray();   // Read data from sensor array
+            if (sensorData != 0b11111111) {
+                MotorBrake(); // Brake robot if it finds the new line
+                break; // Exit the loop
+            }
         }
-    }
     return;
 }
 
 int DetectPLine() {
-    char arrayDetect = ReadSensorArray(); //Read the sensor array
+    unsigned char arrayDetect = ReadSensorArray(); //Read the sensor array
     if (arrayDetect == 0b00000000){ //If the sensor detects all white (a line)
+        while(ReadSensorArray()==0b00000000);
         return 1; //line detected
     } else { //If the sensor does not detect all white
         return 0; //line not detected
@@ -407,4 +438,3 @@ unsigned char ReadSensorArray() {
     I2C_Stop();                     //Send Stop condition
     return linesensor;
 }
-

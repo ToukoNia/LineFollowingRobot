@@ -30,10 +30,11 @@
 #define LED4 LATBbits.LATB5    //Define LED4
 
 #define ENCTURNVAL 9 //defines constant for the number of rotations that is required to turn 90 degrees
-#define COLLISION_THRESH 800 //defines constant to begin to avoid collision advoidance
-#define K 35
-#define Ks 20
+#define COLLISION_THRESH 300 //defines constant to begin to avoid collision advoidance
+#define K 40
+#define Ks 2.5
 #define STARTMARKSPACE 500
+#define SETPOINTDISTANCE 500
 
 void Setup(void);
 unsigned int readRADC(void);
@@ -79,7 +80,7 @@ void Setup(){
     TRISCbits.RC2=0;       //set CCP1(pin13) to an output pin
     TRISB=0b00000000;      //set Motor pins to be output pins
     TRISA=0b11001111;      //set Motor pins to be output pins
-    configPWM();          	  //Configure PWM
+    configPWM();            //Configure PWM
 
     ResetMarkspace();
 
@@ -140,7 +141,7 @@ void AutomaticLineFollow(int a) {
 }
 
 void FlashLED(){       //flashes the LEDs on and off for 5 seconds
-    for (unsigned int i=0;i<5;i++){
+    for (unsigned int i=0;i<1;i++){
         allLED(1);             //turn all LEDs on
         wait10ms(50);          //wait 1 second
         allLED(0);             //turn all LEDs off
@@ -175,7 +176,7 @@ void MotorForwards(){
 }
 
 void TurnLeft(){
-     CCP1CON=0b00001100; //enables PWMA
+    CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
 
     A1=0;
@@ -232,8 +233,8 @@ void EncoderChecker(int encVal){
     unsigned int encCountL=0; //Initialize the left encoder count
     unsigned int encCountR=0; //Initialize the right encoder count
     while(encCountL<encVal || encCountR<encVal){  //loops until both constants are met
-        encCountR=encCountR+REnc;           //sums encoder values. The value is 1 when a turn is complete, and 0 otherwise. Hence, will only increment it if true
-        encCountL=encCountL+LEnc;
+        encCountR+=REnc;           //sums encoder values. The value is 1 when a turn is complete, and 0 otherwise. Hence, will only increment it if true
+        encCountL+=LEnc;
         if (encCountL >= encVal){       //Checks if left encoder count has reaches "encVal"
             B1=1; //If the left encoder count meets or exceeds "encVal", brake the left motor
             B2=1;
@@ -278,24 +279,20 @@ void wait10ms(int del){
     return;              //Exit the function
 }
 
-void MotorSpeed(){/*
-    int distance; //variable to store distances
-    int error;    //variable to store error between desired (0) and actual speed differences between the cars
-    int u;        //variable to store control response
-    if (readRADC()>=COLLISION_THRESH){  //check if there are obstacles detected
+void MotorSpeed(){
+
+    unsigned int distance;    //variable to store distance
+    int u;        //variable to store control response calculated from error between desired (0) and actual speed differences between the cars
+    ResetMarkspace();
+    distance=readRADC();
+    if (distance>=COLLISION_THRESH){  //check if there are obstacles detected
         MotorBrake();  // Brake if obstacle detected
     } else{
         MotorForwards();  //Move forward if no obstacle detected
-        distance=readRADC();  //distance is read from sensor
-        wait10ms(1);          //wait for a short time to sample distance change
-        distance=distance-readRADC();        //calculates change of distance. if negative error, it is too slow and if positive indicates too fast
-        error=0-distance/10;                //calculates speed off mm/ms=m/s
-        u=Ks*error;  //Calculate the control response using a proportional control strategy with a constant gain 'K'
+        u=Ks*(SETPOINTDISTANCE-distance);  //Calculate the control response using a proportional control strategy with a constant gain 'Ks' based on the distance difference from setpoint differences
         AddSpeed(u,1); //Adjust motor speed based on the control response, with both motors being altered equally
-    }*/
-    ResetMarkspace();
+    }
     return;
-
 }
 
 void MotorAngle() {
@@ -303,7 +300,7 @@ void MotorAngle() {
     int error; //variable to store error
     int u;     //variable to store control response
     unsigned char colourArray = ReadSensorArray(); //Read array data from the colour sensor
-    ResetMarkspace();
+    MotorSpeed();
     switch (colourArray) {   // Angle is determined based on the sensor array data
         case 0b11111110:
             angle = 12;
@@ -347,14 +344,13 @@ void MotorAngle() {
         case 0b01111111:
             angle = -12;
             break;
-        case 0b11111111:
-            //TurnRight45();
+        case 0b11111111:    //if all black, brake.
+            MotorBrake();
             break;
         default:
-            angle = 0;  //default angle if there is no matching case
-            MotorSpeed();
+            angle = 0;  //default angle if there is no matching case, means it is either going to be at the passing line or centred.
             break;
-    }   //can add ability for the robot to completely stop when no line detected if required
+    }
     error = 0 - angle; //Calculates the error between the desired angle and the actual angle
     u = K*error; //Gain = K
     if (error){
@@ -381,7 +377,7 @@ void AddSpeed(int u, unsigned int speedOrAngle) {    //Adds speed to motors to r
 }
 
 void SwitchLane() {
-    ResetMarkspace();
+    ResetMarkspace();   //resets any angle to being back to straight. It also resets the speed
     TurnRight45(); // Turn the robot right by approximately 45 degrees
     MotorForwards(); // Move forward
     while(ReadSensorArray()!=0b11111111);   //while still on first line (detecting any white), wait

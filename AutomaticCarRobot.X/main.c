@@ -243,7 +243,9 @@ void EncoderChecker(int encVal){
             A1=1;  // If right encoder count meets or exceeds encVal, brake the right motor
             A2=1;
         }
-        wait10ms(1); //wait for a short duration before checking again
+        while(REnc&&LEnc);
+        while(REnc);
+        while(LEnc);
     };
     return;
 

@@ -29,12 +29,12 @@
 #define LED3 LATBbits.LATB4    //Define LED3
 #define LED4 LATBbits.LATB5    //Define LED4
 
-#define ENCTURNVAL 9 //defines constant for the number of rotations that is required to turn 90 degrees
+#define ENCTURNVAL 20 //defines constant for the number of rotations that is required to turn 90 degrees
 #define COLLISION_THRESH 300 //defines constant to begin to avoid collision advoidance
-#define K 40
-#define Ks 2.5
-#define STARTMARKSPACE 500
-#define SETPOINTDISTANCE 500
+#define K 38
+#define Ks 3
+#define STARTMARKSPACE 525
+#define SETPOINTDISTANCE 150
 
 void Setup(void);
 unsigned int readRADC(void);
@@ -47,7 +47,7 @@ void TurnRight180(void);
 void EncoderChecker(int encVal);
 void MotorBrake(void);
 void wait10ms(int del);
-void MotorSpeed(void);
+unsigned int MotorSpeed(void);
 void MotorAngle(void);
 void AddSpeed(int u, unsigned int speedOrAngle);
 void SwitchLane(void);
@@ -141,7 +141,7 @@ void AutomaticLineFollow(int a) {
 }
 
 void FlashLED(){       //flashes the LEDs on and off for 5 seconds
-    for (unsigned int i=0;i<1;i++){
+    for (unsigned int i=0;i<5;i++){
         allLED(1);             //turn all LEDs on
         wait10ms(50);          //wait 1 second
         allLED(0);             //turn all LEDs off
@@ -208,13 +208,14 @@ void TurnRight(){
 void TurnRight45(){
     TurnRight(); //Call the function to turn the robot right
    // EncoderChecker(ENCTURNVAL); // Check the encoder values to ensure the robot turns approximately 45 degress
-    wait10ms(25);
+    wait10ms(20);
     MotorBrake();
     return; //Exit the function
 }
 void TurnLeft45(){
     TurnLeft(); //Call the function to turn the robot right
-    EncoderChecker(ENCTURNVAL); // Check the encoder values to ensure the robot turns approximately 45 degress
+    wait10ms(15);
+    MotorBrake();
     return; //Exit the function
 }
 
@@ -224,7 +225,7 @@ void TurnRight180(){
    // EncoderChecker(4*ENCTURNVAL); //// Check the encoder values to ensure the robot turns approximately 180 degrees (4 times ENCTURNVAL)
     while(ReadSensorArray()!=0b11111111);   //while still on first line (detecting any white), wait
     // Check if sensor data indicates that the robot has detected the other line
-    while(ReadSensorArray()==0b11111111);   //stop when at back on the+ line (sensor not detecting all black))
+    while(ReadSensorArray()!=0b11100111);   //stop when at back on the+ line (sensor not detecting all black))
     MotorBrake();
     return; //Exit the function
 }
@@ -281,29 +282,28 @@ void wait10ms(int del){
     return;              //Exit the function
 }
 
-void MotorSpeed(){
-
-    unsigned int distance;    //variable to store distance
+unsigned int MotorSpeed(){
+    int distance;    //variable to store distance
     int u;        //variable to store control response calculated from error between desired (0) and actual speed differences between the cars
     ResetMarkspace();
     distance=readRADC();
     if (distance>=COLLISION_THRESH){  //check if there are obstacles detected
-        MotorBrake();  // Brake if obstacle detected
-    } else{
-        MotorForwards();  //Move forward if no obstacle detected
+         // Brake if obstacle detected
+        return 1;
+    } else if (distance>SETPOINTDISTANCE){
         u=Ks*(SETPOINTDISTANCE-distance);  //Calculate the control response using a proportional control strategy with a constant gain 'Ks' based on the distance difference from setpoint differences
         AddSpeed(u,1); //Adjust motor speed based on the control response, with both motors being altered equally
     }
-    return;
+    return 0;
 }
 
 void MotorAngle() {
     int angle; //variable to store angle
     int error; //variable to store error
     int u;     //variable to store control response
-    unsigned char colourArray = ReadSensorArray(); //Read array data from the colour sensor
-    MotorSpeed();
-    switch (colourArray) {   // Angle is determined based on the sensor array data
+    unsigned int brake=MotorSpeed();
+
+    switch (ReadSensorArray()) {   // Angle is determined based on the sensor array data
         case 0b11111110:
             angle = 12;
             break;
@@ -347,25 +347,29 @@ void MotorAngle() {
             angle = -12;
             break;
         case 0b11111111:    //if all black, brake.
-            MotorBrake();
+            angle=-12;
             break;
         default:
             angle = 0;  //default angle if there is no matching case, means it is either going to be at the passing line or centred.
             break;
     }
-    error = 0 - angle; //Calculates the error between the desired angle and the actual angle
-    u = K*error; //Gain = K
-    if (error){
-       AddSpeed(u,0); //Change the speeds on the motor and set mode to Angle
+    if (!brake){
+        error = 0 - angle; //Calculates the error between the desired angle and the actual angle
+        u = K*error; //Gain = K
+        if (error){
+           AddSpeed(u,0); //Change the speeds on the motor and set mode to Angle
+        }
+        MotorForwards();
+    } else{
+        MotorBrake();
     }
-    MotorForwards();
     return;
 }
 
 
 
 void AddSpeed(int u, unsigned int speedOrAngle) {    //Adds speed to motors to respond to MotorSpeed or MotorAngle
-    //markspaceL controls the right motor speed and vice versa
+    //markspaceL controls the left motor speed and vice versa
 
     markspaceL = (markspaceL + u) > 1023 ? 1023 : ((markspaceL + u) < 0 ? 0 : markspaceL + u);  //compares markspaceL+u with 0, if its greater, change markspaceL to markspaceL+u, otherwise equals 0. It then does the same check with 1023
 

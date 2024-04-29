@@ -248,7 +248,6 @@ void EncoderChecker(int encVal){
         while(LEnc);
     };
     return;
-
 }
 
 void MotorBrake(){

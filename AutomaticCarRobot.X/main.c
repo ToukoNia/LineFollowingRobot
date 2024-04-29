@@ -3,6 +3,20 @@
  * Author: Group 14
  *
  * Created on 08 March 2024, 21:59
+
+    This is code for the ACS11002 Project. It programs a shadowbot running on a PIC18F221 microcontroller.
+    It programs the robot to go round a circular track with a white line on a black background.
+    It follows these conditions:
+        -It sets up and flashes the LEDs for 5 seconds
+        -It goes round the outer loop twice
+        -It changes lane
+        -It goes round the inner loop once and then stops at the passing line
+        -It waits 5 seconds
+        -It turns back around and does the inner loop in reverse
+        -Changes lane back to outer loop
+        -Continues till it reaches the passing line, stops then blinks the LEDs for 5 seconds
+
+    Whilst doing this, it automatically will stop if it detects a robot ahead.
  */
 
 
@@ -31,15 +45,15 @@
 
 #define ENCTURNVAL 20 //defines constant for the number of rotations that is required to turn 90 degrees
 #define COLLISION_THRESH 300 //defines constant to begin to avoid collision advoidance
-#define K 38
-#define Ks 3
-#define STARTMARKSPACE 525
-#define SETPOINTDISTANCE 150
+#define K 38    //defines constant for the angle gain
+#define Ks 3    //defines constant for the speed gain. Maximum value was calculated from StartSpeed/(MAX_ERROR)
+#define STARTMARKSPACE 525  //sets the start markspace for the motors (this is also the value the motors reset to)
+#define SETPOINTDISTANCE 50    //sets the setpoint distance before automatic braking starts stopping the robot. 50 was picked as it allowed controlled stop and following of the robot in front without causing the robot to slow down if someone was standing too close to a corner of the track etc.
 
 void Setup(void);
 unsigned int readRADC(void);
 void FlashLED(void);
-void allLED(int val);
+void allLED(unsigned int val);
 void MotorForwards(void);
 void TurnRight(void);
 void TurnRight45(void);
@@ -59,11 +73,9 @@ void I2C_RepeatedStart(void);
 void I2C_Stop(void);
 void I2C_Write(unsigned char write);
 unsigned char I2C_Read(void);
-unsigned char ReadSensorArray();
+unsigned char ReadSensorArray(void);
 void AutomaticLineFollow(int a);
 void MotorPath(void);
-void TurnLeft(void);
-void TurnLeft45(void);
 void ResetMarkspace(void);
 void configPWM(void);
 unsigned int markspaceL;    //Mark space ratio for Left motor
@@ -108,7 +120,7 @@ void configPWM(void){   //Configures PWM
     return;
 }
 
-void ResetMarkspace(){
+void ResetMarkspace(){  //this sets both of the motor speeds back to their default values
     markspaceL=STARTMARKSPACE;
     markspaceR=STARTMARKSPACE;
 }
@@ -150,7 +162,7 @@ void FlashLED(){       //flashes the LEDs on and off for 5 seconds
     return;
 }
 
-void allLED(int val){ //sets every LED to either on or off based on if one or zero entered.
+void allLED(unsigned int val){ //sets every LED to either on or off based on if one or zero entered.
     LED1=val; //sets LED1 to the value specified
     LED2=val; //sets LED2 to the value specified
     LED3=val; //sets LED3 to the value specified
@@ -174,7 +186,7 @@ void MotorForwards(){
     CCPR2L = markspaceR>>2;                  // CCP2CON and CCPR2L
     return;
 }
-
+/* was found to be unnessary
 void TurnLeft(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
@@ -189,7 +201,7 @@ void TurnLeft(){
 
     return;
 }
-
+*/
 void TurnRight(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
@@ -207,18 +219,17 @@ void TurnRight(){
 
 void TurnRight45(){
     TurnRight(); //Call the function to turn the robot right
-   // EncoderChecker(ENCTURNVAL); // Check the encoder values to ensure the robot turns approximately 45 degress
-    wait10ms(20);
-    MotorBrake();
+    EncoderChecker(ENCTURNVAL); // Check the encoder values to ensure the robot turns approximately 45 degress
     return; //Exit the function
 }
+/*
 void TurnLeft45(){
     TurnLeft(); //Call the function to turn the robot right
     wait10ms(15);
     MotorBrake();
     return; //Exit the function
 }
-
+*/
 
 void TurnRight180(){
     TurnRight(); //Call the function to turn the robot right
@@ -249,6 +260,7 @@ void EncoderChecker(int encVal){
         while(LEnc);
     };
     return;
+
 }
 
 void MotorBrake(){
@@ -300,7 +312,7 @@ void MotorAngle() {
     int angle; //variable to store angle
     int error; //variable to store error
     int u;     //variable to store control response
-    unsigned int brake=MotorSpeed();
+    unsigned int brake=MotorSpeed();    //calls motorSpeed
 
     switch (ReadSensorArray()) {   // Angle is determined based on the sensor array data
         case 0b11111110:
@@ -352,16 +364,16 @@ void MotorAngle() {
             angle = 0;  //default angle if there is no matching case, means it is either going to be at the passing line or centred.
             break;
     }
-    if (!brake){
-        error = 0 - angle; //Calculates the error between the desired angle and the actual angle
-        u = K*error; //Gain = K
-        if (error){
-           AddSpeed(u,0); //Change the speeds on the motor and set mode to Angle
-        }
-        MotorForwards();
-    } else{
+    while(MotorSpeed()){    //loops until the obstacle is further away. This prevents errors with continuing to follow the line after MotorSpeed() was ran.
         MotorBrake();
     }
+    error = 0 - angle; //Calculates the error between the desired angle and the actual angle
+    u = K*error; //Gain = K
+    if (error){
+       AddSpeed(u,0); //Change the speeds on the motor and set mode to Angle
+    }
+    MotorForwards();
+
     return;
 }
 

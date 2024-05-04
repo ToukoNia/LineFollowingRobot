@@ -366,8 +366,9 @@ void MotorAngle() {
         MotorBrake();
     }
     error = 0 - angle; //Calculates the error between the desired angle and the actual angle
-    u = K*error; //Gain = K
+
     if (error){
+       u = K*error; //Gain = K
        AddSpeed(u,0); //Change the speeds on the motor and set mode to Angle
     }
     MotorForwards();

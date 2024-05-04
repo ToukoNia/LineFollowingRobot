@@ -46,8 +46,8 @@
 #define ENCTURNVAL 20 //defines constant for the number of rotations that is required to turn 90 degrees
 #define COLLISION_THRESH 300 //defines constant to begin to avoid collision advoidance
 #define K 38    //defines constant for the angle gain
-#define Ks 3    //defines constant for the speed gain. Maximum value was calculated from StartSpeed/(MAX_ERROR)
-#define STARTMARKSPACE 525  //sets the start markspace for the motors (this is also the value the motors reset to)
+#define Ks 2    //defines constant for the speed gain. Maximum value was calculated from StartSpeed/(MAX_ERROR)
+#define STARTMARKSPACE 500    //sets the start markspace for the motors (this is also the value the motors reset to)
 #define SETPOINTDISTANCE 50    //sets the setpoint distance before automatic braking starts stopping the robot. 50 was picked as it allowed controlled stop and following of the robot in front without causing the robot to slow down if someone was standing too close to a corner of the track etc.
 
 void Setup(void);
@@ -312,8 +312,6 @@ void MotorAngle() {
     int angle; //variable to store angle
     int error; //variable to store error
     int u;     //variable to store control response
-    unsigned int brake=MotorSpeed();    //calls motorSpeed
-
     switch (ReadSensorArray()) {   // Angle is determined based on the sensor array data
         case 0b11111110:
             angle = 12;

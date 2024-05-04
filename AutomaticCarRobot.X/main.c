@@ -219,17 +219,10 @@ void TurnRight(){
 
 void TurnRight45(){
     TurnRight(); //Call the function to turn the robot right
-    EncoderChecker(ENCTURNVAL); // Check the encoder values to ensure the robot turns approximately 45 degress
-    return; //Exit the function
-}
-/*
-void TurnLeft45(){
-    TurnLeft(); //Call the function to turn the robot right
-    wait10ms(15);
+    wait10ms(25);
     MotorBrake();
     return; //Exit the function
 }
-*/
 
 void TurnRight180(){
     TurnRight(); //Call the function to turn the robot right
@@ -278,13 +271,6 @@ unsigned int readRADC() {
     while (ADCON0bits.GO){}; //do nothing while conversion in progress
     return ((ADRESH << 8) + ADRESL); //Combines high and low A/D bytes into one
 }                                 // value and returns this A/D value 0-1023
-/*
-unsigned int readLADC() {
-    ADCON0 = 0b00000011; //select A/D channel AN0,start conversion
-    while (ADCON0bits.GO){}; //do nothing while conversion in progress
-    return ((ADRESH << 8) + ADRESL); //Combines high and low A/D bytes into one
-}                                 // value and returns this A/D value 0-1023
-*/
 
 void wait10ms(int del){
     unsigned int c;         //Declare a variable to use as a counter
@@ -355,7 +341,7 @@ void MotorAngle() {
         case 0b01111111:
             angle = -12;
             break;
-        case 0b11111111:    //if all black, brake.
+        case 0b11111111:    //if all black, turn left.
             angle=-12;
             break;
         default:

@@ -46,7 +46,7 @@
 #define ENCTURNVAL 20 //defines constant for the number of rotations that is required to turn 90 degrees
 #define COLLISION_THRESH 300 //defines constant to begin to avoid collision advoidance
 #define K 38    //defines constant for the angle gain
-#define Ks 2    //defines constant for the speed gain. Maximum value was calculated from StartSpeed/(MAX_ERROR)
+#define Ks 1.8    //defines constant for the speed gain. Maximum value was calculated from StartSpeed/(MAX_ERROR)
 #define STARTMARKSPACE 500    //sets the start markspace for the motors (this is also the value the motors reset to)
 #define SETPOINTDISTANCE 50    //sets the setpoint distance before automatic braking starts stopping the robot. 50 was picked as it allowed controlled stop and following of the robot in front without causing the robot to slow down if someone was standing too close to a corner of the track etc.
 
@@ -143,7 +143,7 @@ void MotorPath() {
 void AutomaticLineFollow(int a) {
     unsigned int numberPassed = 0; // Declare and initialize the variable
     MotorAngle();
-    while(ReadSensorArray()==0b00000000);
+    while(ReadSensorArray()==0b00000000);   //lets it get over the line after turning 180
     // Loop until 'numberPassed' is less than 'a'
     while (numberPassed < a) {
         MotorAngle(); //Makes sure the robot follows the line
@@ -186,22 +186,7 @@ void MotorForwards(){
     CCPR2L = markspaceR>>2;                  // CCP2CON and CCPR2L
     return;
 }
-/* was found to be unnessary
-void TurnLeft(){
-    CCP1CON=0b00001100; //enables PWMA
-    CCP2CON=0b00001100; //enables PWMB
 
-    A1=0;
-    A2=1;
-    //this sets the right wheel to forward
-
-    B1=1;
-    B2=0;
-    //this sets the left wheel to reverse
-
-    return;
-}
-*/
 void TurnRight(){
     CCP1CON=0b00001100; //enables PWMA
     CCP2CON=0b00001100; //enables PWMB
@@ -341,7 +326,7 @@ void MotorAngle() {
         case 0b01111111:
             angle = -12;
             break;
-        case 0b11111111:    //if all black, turn left.
+        case 0b11111111:    //if all black, turn left. avoided an issue we where finding where sufficent instability would break the system.
             angle=-12;
             break;
         default:
@@ -366,14 +351,14 @@ void MotorAngle() {
 
 void AddSpeed(int u, unsigned int speedOrAngle) {    //Adds speed to motors to respond to MotorSpeed or MotorAngle
     //markspaceL controls the left motor speed and vice versa
-
-    markspaceL = (markspaceL + u) > 1023 ? 1023 : ((markspaceL + u) < 0 ? 0 : markspaceL + u);  //compares markspaceL+u with 0, if its greater, change markspaceL to markspaceL+u, otherwise equals 0. It then does the same check with 1023
+    int check=markspaceL;
+    markspaceL = (check + u) > 1023 ? 1023 : ((check + u) < 0 ? 0 : check + u);  //compares markspaceL+u with 0, if its greater, change markspaceL to markspaceL+u, otherwise equals 0. It then does the same check with 1023
 
     if (!speedOrAngle){ //if 0 is passed in (sets it to the angle)
         u = -u; //If angle, then added speed to one motor is converted to slow down for other motor
     }
-
-    markspaceR = (markspaceR + u) > 1023 ? 1023 : ((markspaceR + u) < 0 ? 0 : markspaceR + u);  //compares markspaceR+u with 0, if its greater, change markspaceR to markspaceR+u, otherwise equals 0. It then does the same check with 1023
+    check=markspaceR;
+    markspaceR = (check + u) > 1023 ? 1023 : ((check + u) < 0 ? 0 : check + u);  //compares markspaceR+u with 0, if its greater, change markspaceR to markspaceR+u, otherwise equals 0. It then does the same check with 1023
 
     return;
 }

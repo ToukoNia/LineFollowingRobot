@@ -78,8 +78,8 @@ void AutomaticLineFollow(int a);
 void MotorPath(void);
 void ResetMarkspace(void);
 void configPWM(void);
-unsigned int markspaceL;    //Mark space ratio for Left motor
-unsigned int markspaceR;    //Mark space ratio for Right motor
+int markspaceL;    //Mark space ratio for Left motor
+int markspaceR;    //Mark space ratio for Right motor
 
 void main(void) {
     Setup();
@@ -351,14 +351,12 @@ void MotorAngle() {
 
 void AddSpeed(int u, unsigned int speedOrAngle) {    //Adds speed to motors to respond to MotorSpeed or MotorAngle
     //markspaceL controls the left motor speed and vice versa
-    int check=markspaceL;
-    markspaceL = (check + u) > 1023 ? 1023 : ((check + u) < 0 ? 0 : check + u);  //compares markspaceL+u with 0, if its greater, change markspaceL to markspaceL+u, otherwise equals 0. It then does the same check with 1023
+    markspaceL = (markspaceL + u) > 1023 ? 1023 : ((markspaceL + u) < 0 ? 0 : markspaceL + u);  //compares markspaceL+u with 0, if its greater, change markspaceL to markspaceL+u, otherwise equals 0. It then does the same check with 1023
 
     if (!speedOrAngle){ //if 0 is passed in (sets it to the angle)
         u = -u; //If angle, then added speed to one motor is converted to slow down for other motor
     }
-    check=markspaceR;
-    markspaceR = (check + u) > 1023 ? 1023 : ((check + u) < 0 ? 0 : check + u);  //compares markspaceR+u with 0, if its greater, change markspaceR to markspaceR+u, otherwise equals 0. It then does the same check with 1023
+    markspaceR = (markspaceR + u) > 1023 ? 1023 : ((markspaceR + u) < 0 ? 0 : markspaceR + u);  //compares markspaceR+u with 0, if its greater, change markspaceR to markspaceR+u, otherwise equals 0. It then does the same check with 1023
 
     return;
 }

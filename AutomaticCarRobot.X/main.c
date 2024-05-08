@@ -43,7 +43,7 @@
 #define LED3 LATBbits.LATB4    //Define LED3
 #define LED4 LATBbits.LATB5    //Define LED4
 
-#define ENCTURNVAL 20 //defines constant for the number of rotations that is required to turn 90 degrees
+#define ENC_TURN_VAL 20 //defines constant for the number of rotations that is required to turn 90 degrees
 #define COLLISION_THRESH 300 //defines constant to begin to avoid collision advoidance
 #define K 30    //defines constant for the angle gain
 #define Ks 1.8    //defines constant for the speed gain. Maximum value was calculated from StartSpeed/(MAX_ERROR)
@@ -77,7 +77,8 @@ unsigned char ReadSensorArray(void);
 void AutomaticLineFollow(int a);
 void MotorPath(void);
 void ResetMarkspace(void);
-void configPWM(void);
+void ConfigPWM(void);
+
 int markspaceL;    //Mark space ratio for Left motor
 int markspaceR;    //Mark space ratio for Right motor
 
@@ -92,7 +93,7 @@ void Setup(){
     TRISCbits.RC2=0;       //set CCP1(pin13) to an output pin
     TRISB=0b00000000;      //set Motor pins to be output pins
     TRISA=0b11001111;      //set Motor pins to be output pins
-    configPWM();            //Configure PWM
+    ConfigPWM();            //Configure PWM
 
     ResetMarkspace();
 
@@ -110,7 +111,7 @@ void Setup(){
     return;
 }
 
-void configPWM(void){   //Configures PWM
+void ConfigPWM(void){   //Configures PWM
     PR2 = 0b11111111 ;     //set period of PWM,610Hz
     T2CON = 0b00000111 ;   //Timer 2(TMR2)on, prescaler = 16
     CCP1CON = 0b00001100;   //enable CCP1 PWM
@@ -149,6 +150,14 @@ void AutomaticLineFollow(int a) {
         MotorAngle(); //Makes sure the robot follows the line
         numberPassed += DetectPLine();  //if detecting the passing line, increment amount of loops by one.
     }
+    return;
+}
+
+void AllLED(unsigned int val){ //sets every LED to either on or off based on if one or zero entered.
+    LED1=val;
+    LED2=val;
+    LED3=val;
+    LED4=val;
     return;
 }
 
@@ -196,7 +205,7 @@ void TurnRight(){
 
 void TurnRight45(){
     TurnRight(); //Call the function to turn the robot right
-    EncoderChecker(ENCTURNVAL); // Check the encoder values to ensure the robot turns approximately 45 degress
+    EncoderChecker(ENC_TURN_VAL); // Check the encoder values to ensure the robot turns approximately 45 degress
     return; //Exit the function
 }
 
@@ -204,7 +213,7 @@ void TurnRight45(){
 
 void TurnRight180(){
     TurnRight(); //Call the function to turn the robot right
-   // EncoderChecker(4*ENCTURNVAL); //// Check the encoder values to ensure the robot turns approximately 180 degrees (4 times ENCTURNVAL)
+   // EncoderChecker(4*ENC_TURN_VAL); //// Check the encoder values to ensure the robot turns approximately 180 degrees (4 times ENC_TURN_VAL)
     while(ReadSensorArray()!=0b11111111);   //while still on first line (detecting any white), wait
     // Check if sensor data indicates that the robot has detected the other line
     while(ReadSensorArray()==0b11111111);   //stop when at back on the+ line (sensor not detecting all black))
@@ -259,15 +268,8 @@ unsigned int ReadRADC() {
     return ((ADRESH << 8) + ADRESL); //Combines high and low A/D bytes into one
 }                                 // value and returns this A/D value 0-1023
 
-void Wait10ms(int del){
-    unsigned int c;         //Declare a variable to use as a counter
-    for(c=0;c<del;c++)      //Loop to delay for 'del' multiples of 10 milliseconds
-        __delay_ms(10);     //Call a function to delay for 10 milliseconds
-    return;              //Exit the function
-}
-
 unsigned int MotorSpeed(){
-    int distance;    //variable to store distance
+    unsigned int distance;    //variable to store distance
     int u;        //variable to store control response calculated from error between desired (0) and actual speed differences between the cars
     ResetMarkspace();
     distance=ReadRADC();
@@ -327,9 +329,6 @@ void MotorAngle() {
             break;
         case 0b01111111:
             angle = -12;
-            break;
-        case 0b11111111:    //if all black, turn left. avoided an issue we where finding where sufficent instability would break the system.
-            angle=-12;
             break;
         default:
             angle = 0;  //default angle if there is no matching case, means it is either going to be at the passing line or centred.
